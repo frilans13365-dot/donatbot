@@ -1,1 +1,8 @@
-
+version: '3'
+services:
+  bot:
+    build: .
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
