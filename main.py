@@ -26,7 +26,6 @@ async def payment_webhook(request: web.Request):
     status = data.get("status")
     if status == "paid":
         update_payment_status(invoice_id, "paid")
-        # можно отправить уведомление пользователю через bot.send_message
     return web.Response(status=200, text="OK")
 
 async def on_startup(dp):
@@ -41,7 +40,6 @@ def main():
     app = web.Application()
     app.router.add_post("/payment-webhook", payment_webhook)
 
-    # Запуск с вебхуком от aiogram
     start_webhook(
         dispatcher=dp,
         webhook_path="/webhook",
@@ -50,7 +48,7 @@ def main():
         skip_updates=True,
         host="0.0.0.0",
         port=WEBHOOK_PORT,
-        webhook_url=f"{BASE_URL}/webhook"
+        web_app=app
     )
 
 if __name__ == "__main__":
