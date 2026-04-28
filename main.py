@@ -1,7 +1,7 @@
-import asyncio
 import json
+import asyncio
 from aiohttp import web
-from aiogram import Bot, Dispatcher, types
+from aiogram import Bot, Dispatcher
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.utils.executor import start_webhook
 
@@ -20,7 +20,6 @@ async def payment_webhook(request: web.Request):
     body = await request.read()
     if not verify_webhook_signature(body, signature):
         return web.Response(status=401, text="Invalid signature")
-    
     data = json.loads(body)
     invoice_id = data.get("invoice_id")
     status = data.get("status")
@@ -31,15 +30,20 @@ async def payment_webhook(request: web.Request):
 async def on_startup(dp):
     await bot.set_webhook(f"{BASE_URL}/webhook")
     init_db()
+    # Добавляем свой маршрут к существующему приложению
+    dp.loop.create_task(
+        web._run_app(
+            web.Application(),
+            host="0.0.0.0",
+            port=8081
+        )
+    )
 
 async def on_shutdown(dp):
     await bot.delete_webhook()
     await bot.session.close()
 
-def main():
-    app = web.Application()
-    app.router.add_post("/payment-webhook", payment_webhook)
-
+if __name__ == "__main__":
     start_webhook(
         dispatcher=dp,
         webhook_path="/webhook",
@@ -48,8 +52,4 @@ def main():
         skip_updates=True,
         host="0.0.0.0",
         port=WEBHOOK_PORT,
-        web_app=app
     )
-
-if __name__ == "__main__":
-    main()
