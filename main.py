@@ -3,6 +3,7 @@ import asyncio
 from aiohttp import web
 from aiogram import Bot, Dispatcher
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.webhook import get_new_configured_app
 
 from config import BOT_TOKEN, BASE_URL, WEBHOOK_PORT, PAYMENTO_WEBHOOK_SECRET
@@ -11,7 +12,8 @@ from handlers import register_handlers
 from payment import verify_webhook_signature
 
 bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher(bot)
+storage = MemoryStorage()
+dp = Dispatcher(bot, storage=storage)
 dp.middleware.setup(LoggingMiddleware())
 register_handlers(dp)
 
