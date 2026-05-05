@@ -26,12 +26,12 @@ async def payment_webhook(request: web.Request):
     invoice_id = data.get("invoice_id")
     status = data.get("status")
     if status == "paid":
-        update_payment_status(invoice_id, "paid")
+        await update_payment_status(invoice_id, "paid")
     return web.Response(status=200, text="OK")
 
 async def on_startup(app):
     await bot.set_webhook(f"{BASE_URL}/webhook")
-    init_db()
+    await init_db()
 
 async def on_shutdown(app):
     await bot.delete_webhook()
