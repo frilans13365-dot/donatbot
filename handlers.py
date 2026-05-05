@@ -13,8 +13,8 @@ class DonationState(StatesGroup):
 async def cmd_start(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
     username = message.from_user.username
-    save_user(user_id, username)
-    if is_donation_confirmed(user_id):
+    await save_user(user_id, username)
+    if await is_donation_confirmed(user_id):
         await message.answer("✅ Вы уже подтвердили донат! Доступ открыт.")
     else:
         await message.answer(
@@ -26,13 +26,13 @@ async def cmd_start(message: types.Message, state: FSMContext):
 async def get_wallet(message: types.Message, state: FSMContext):
     wallet = message.text.strip()
     user_id = message.from_user.id
-    set_user_wallet(user_id, wallet)
+    await set_user_wallet(user_id, wallet)
 
     try:
         invoice = await create_invoice(amount=10.0, currency="USDT", order_id=str(user_id))
         pay_url = invoice["payment_url"]
         invoice_id = invoice["id"]
-        save_payment(user_id, invoice_id, "10.0")
+        await save_payment(user_id, invoice_id, "10.0")
 
         kb = types.InlineKeyboardMarkup(row_width=1)
         kb.add(types.InlineKeyboardButton(text="💸 Оплатить донат", url=pay_url))
@@ -50,7 +50,7 @@ async def get_wallet(message: types.Message, state: FSMContext):
 
 async def check_payment(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
-    if is_donation_confirmed(user_id):
+    if await is_donation_confirmed(user_id):
         await callback_query.message.edit_text("✅ Донат подтверждён! Доступ открыт.")
     else:
         await callback_query.answer("Платёж пока не найден. Подождите немного или оплатите.", show_alert=True)
