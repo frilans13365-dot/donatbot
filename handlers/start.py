@@ -31,7 +31,7 @@ if not user or 'language' not in user:
             "🌐 Выберите язык / Choose language:",
             reply_markup=language_keyboard()
         )
-    else:
+else:
         lang = user['language']
         t = get_texts(lang)
         ad = await get_ad_text()
