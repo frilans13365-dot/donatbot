@@ -18,13 +18,20 @@ async def get_lang(user_id: int) -> str:
     user = await get_user(user_id)
     if not user:
         return 'ru'
-    try:
-        return user['language'] or 'ru'
-    except (K
-else:
+    return user.get('language', 'ru')
+
+
+async def cmd_start(message: types.Message):
+    user = await get_user(message.from_user.id)
+    if not user or 'language' not in user:
+        await message.answer(
+            "🌐 Выберите язык / Choose language:",
+            reply_markup=language_keyboard()
+        )
+    else:
         lang = user['language']
         t = get_texts(lang)
-        ad= await get_ad_text()
+        ad = await get_ad_text()
         ad_block = f"\n📢 {ad}" if ad else ""
         await message.answer(
             t["welcome"].format(ad=ad_block),
