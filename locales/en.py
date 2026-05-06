@@ -1,15 +1,15 @@
 TEXTS = {
-    "choose_language": "🌐 Выберите язык / Choose language:",
+    "choose_language": "Choose language",
     "welcome": (
-        "👋 <b>Welcome to DonatBot!</b>\n\n"
-        "This is a decentralized mutual donation system.\n\n"
-        "{ad}"
+        "<b>Welcome to DonatBot</b>\n\n"
+        "This is a decentralized system\n{ad}"
     ),
-    "rules_btn": "📜 Rules",
-    "agree_btn": "✅ I agree",
-    "back_btn": "🔙 Back",
-    "main_menu_btn": "🏠 Main menu",
-    "rules": (
+    "rules_btn": "Rules",
+    "agree_btn": "I agree",
+    "back_btn": "Back",
+    "main_menu_btn": "Main menu",
+    "rules": "DonatBot Rules\n\n1. Game rules selection.\n2. Game rules.\n3. Game rules.\n4. Game rules.\n5. Game rules.\n6. Game rules.\n7. Game rules.\n8. Game rules.\n9. Game rules.\n10. Game rules.",
+}
         "📜 <b>DonatBot Rules</b>\n\n"
         "1. You send a donation to 5 addresses of the specified amount.\n"
         "2. You MUST include the word <b>DONAT</b> in the transaction comment.\n"
