@@ -26,7 +26,7 @@ async def get_lang(user_id: int) -> str:
 
 async def cmd_start(message: types.Message):
     user = await get_user(message.from_user.id)
-    if not user or not user['language']:
+if not user or 'language' not in user:
         await message.answer(
             "🌐 Выберите язык / Choose language:",
             reply_markup=language_keyboard()
