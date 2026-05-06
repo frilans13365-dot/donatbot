@@ -1,10 +1,10 @@
 from aiogram import Dispatcher, types
 from aiogram.dispatcher import FSMContext
+from aiogram.utils.exceptions import MessageNotModified
 
 from database import (
     get_user, create_user, set_user_language,
-    get_donation_amount, get_ad_text,
-    is_in_queue, get_user_queue_position, queue_count
+    get_donation_amount, get_ad_text
 )
 from keyboards.keyboards import language_keyboard, main_menu_keyboard, rules_keyboard
 from locales import ru, en
@@ -22,87 +22,66 @@ async def get_lang(user_id: int) -> str:
 
 
 async def cmd_start(message: types.Message):
-    try:
-        user = await get_user(message.from_user.id)
-        if not user or 'language' not in user:
-            await message.answer(
-                "🌐 Выберите язык / Choose language:",
-                reply_markup=language_keyboard()
-            )
-        else:
-            lang = user['language']
-            t = get_texts(lang)
-            ad = await get_ad_text()
-            ad_block = f"\n📢 {ad}" if ad else ""
-            await message.answer(
-                t["welcome"].format(ad=ad_block),
-                reply_markup=main_menu_keyboard(lang)
-            )
-    except Exception as e:
-        await message.answer(f"❌ Ошибка: {e}")
-
-
-async def set_language(call: types.CallbackQuery):
-    try:
-        lang = call.data.replace("lang_", "")
-        await set_user_language(call.from_user.id, lang)
-        await create_user(call.from_user.id, lang)
+    user = await get_user(message.from_user.id)
+    if not user or 'language' not in user:
+        await message.answer(
+            "🌐 Выберите язык / Choose language:",
+            reply_markup=language_keyboard()
+        )
+    else:
+        lang = user['language']
         t = get_texts(lang)
         ad = await get_ad_text()
         ad_block = f"\n📢 {ad}" if ad else ""
-        try:
-            await call.message.edit_text(
-                t["welcome"].format(ad=ad_block),
-                reply_markup=main_menu_keyboard(lang)
-            )
-        except:
-            await call.message.answer(
-                t["welcome"].format(ad=ad_block),
-                reply_markup=main_menu_keyboard(lang)
-            )
-    except Exception as e:
-        await call.message.answer(f"❌ Ошибка: {e}")
+        await message.answer(
+            t["welcome"].format(ad=ad_block),
+            reply_markup=main_menu_keyboard(lang)
+        )
+
+
+async def set_language(call: types.CallbackQuery):
+    lang = call.data.replace("lang_", "")
+    await set_user_language(call.from_user.id, lang)
+    await create_user(call.from_user.id, lang)
+    t = get_texts(lang)
+    ad = await get_ad_text()
+    ad_block = f"\n📢 {ad}" if ad else ""
+    try:
+        await call.message.edit_text(
+            t["welcome"].format(ad=ad_block),
+            reply_markup=main_menu_keyboard(lang)
+        )
+    except MessageNotModified:
+        pass
     await call.answer()
 
 
 async def main_menu(call: types.CallbackQuery):
+    lang = await get_lang(call.from_user.id)
+    t = get_texts(lang)
+    ad = await get_ad_text()
+    ad_block = f"\n📢 {ad}" if ad else ""
     try:
-        lang = await get_lang(call.from_user.id)
-        t = get_texts(lang)
-        ad = await get_ad_text()
-        ad_block = f"\n📢 {ad}" if ad else ""
-        try:
-            await call.message.edit_text(
-                t["welcome"].format(ad=ad_block),
-                reply_markup=main_menu_keyboard(lang)
-            )
-        except:
-            await call.message.answer(
-                t["welcome"].format(ad=ad_block),
-                reply_markup=main_menu_keyboard(lang)
-            )
-    except Exception as e:
-        await call.message.answer(f"❌ Ошибка: {e}")
+        await call.message.edit_text(
+            t["welcome"].format(ad=ad_block),
+            reply_markup=main_menu_keyboard(lang)
+        )
+    except MessageNotModified:
+        pass
     await call.answer()
 
 
 async def show_rules(call: types.CallbackQuery):
+    lang = await get_lang(call.from_user.id)
+    t = get_texts(lang)
+    amount = await get_donation_amount()
     try:
-        lang = await get_lang(call.from_user.id)
-        t = get_texts(lang)
-        amount = await get_donation_amount()
-        try:
-            await call.message.edit_text(
-                t["rules"].format(amount=amount),
-                reply_markup=rules_keyboard(lang)
-            )
-        except:
-            await call.message.answer(
-                t["rules"].format(amount=amount),
-                reply_markup=rules_keyboard(lang)
-            )
-    except Exception as e:
-        await call.message.answer(f"❌ Ошибка: {e}")
+        await call.message.edit_text(
+            t["rules"].format(amount=amount),
+            reply_markup=rules_keyboard(lang)
+        )
+    except MessageNotModified:
+        pass
     await call.answer()
 
 
