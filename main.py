@@ -1,4 +1,17 @@
-import asyncio
+import asyncpg
+import os
+
+async def fix_database():
+    try:
+        conn = await asyncpg.connect(os.environ['DATABASE_URL'])
+        await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS language VARCHAR(2) DEFAULT \'ru\'')
+        await conn.close()
+        print("✅ Database fixed: language column added")
+    except Exception as e:
+        print(f"Fix error: {e}")
+
+# Добавьте эту строку перед запуском бота
+# asyncio.run(fix_database())import asyncio
 from aiohttp import web
 from aiogram import Bot, Dispatcher
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
