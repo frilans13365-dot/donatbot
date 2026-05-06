@@ -1,4 +1,3 @@
-import json
 import asyncio
 from aiohttp import web
 from aiogram import Bot, Dispatcher
@@ -8,17 +7,19 @@ from aiogram.dispatcher.webhook import get_new_configured_app
 
 from config import config
 from database import init_db
-from handlers import start, donation, admin
+from handlers.start import register_start
+from handlers.donation import register_donation
+from handlers.admin import register_admin
 from handlers.webhook import payment_webhook
 
-bot = Bot(token=config.BOT_TOKEN)
+bot = Bot(token=config.BOT_TOKEN, parse_mode="HTML")
 storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 dp.middleware.setup(LoggingMiddleware())
 
-dp.include_router(start.router)
-dp.include_router(donation.router)
-dp.include_router(admin.router)
+register_start(dp)
+register_donation(dp)
+register_admin(dp)
 
 
 async def on_startup(app):
