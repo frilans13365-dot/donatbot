@@ -22,21 +22,34 @@ async def get_lang(user_id: int) -> str:
 
 
 async def cmd_start(message: types.Message):
-    user = await get_user(message.from_user.id)
-    if not user or 'language' not in user:
-        await message.answer(
-            "🌐 Выберите язык / Choose language:",
-            reply_markup=language_keyboard()
-        )
-    else:
-        lang = user['language']
-        t = get_texts(lang)
-        ad = await get_ad_text()
-        ad_block = f"\n📢 {ad}" if ad else ""
-        await message.answer(
-            t["welcome"].format(ad=ad_block),
-            reply_markup=main_menu_keyboard(lang)
-        )
+    try:
+        # Отладочное сообщение
+        await message.answer("🔄 Отладка: функция cmd_start вызвана")
+        
+        user = await get_user(message.from_user.id)
+        
+        # Отладочное сообщение
+        await message.answer(f"🔄 Отладка: user = {user}")
+        
+        if not user or 'language' not in user:
+            # Отладочное сообщение
+            await message.answer("🔄 Отладка: показываю выбор языка")
+            
+            await message.answer(
+                "🌐 Выберите язык / Choose language:",
+                reply_markup=language_keyboard()
+            )
+        else:
+            lang = user['language']
+            t = get_texts(lang)
+            ad = await get_ad_text()
+            ad_block = f"\n📢 {ad}" if ad else ""
+            await message.answer(
+                t["welcome"].format(ad=ad_block),
+                reply_markup=main_menu_keyboard(lang)
+            )
+    except Exception as e:
+        await message.answer(f"❌ Ошибка: {str(e)}")
 
 
 async def set_language(call: types.CallbackQuery):
