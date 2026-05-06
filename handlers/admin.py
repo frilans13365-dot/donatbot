@@ -1,8 +1,6 @@
-from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
-from aiogram.filters import Command
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
+from aiogram import Dispatcher, types
+from aiogram.dispatcher import FSMContext
+from aiogram.dispatcher.filters.state import State, StatesGroup
 
 from config import config
 from database import (
@@ -11,8 +9,6 @@ from database import (
     get_admin_wallet
 )
 from keyboards.keyboards import admin_keyboard, admin_back_keyboard
-
-router = Router()
 
 
 def is_admin(user_id: int) -> bool:
@@ -26,15 +22,13 @@ class AdminState(StatesGroup):
     waiting_broadcast = State()
 
 
-@router.message(Command("admin"))
-async def cmd_admin(message: Message):
+async def cmd_admin(message: types.Message):
     if not is_admin(message.from_user.id):
         return
     await message.answer("🔧 <b>Admin Panel</b>", reply_markup=admin_keyboard())
 
 
-@router.callback_query(F.data == "admin_panel")
-async def admin_panel(call: CallbackQuery):
+async def admin_panel(call: types.CallbackQuery):
     if not is_admin(call.from_user.id):
         await call.answer("⛔ Access denied", show_alert=True)
         return
@@ -42,8 +36,7 @@ async def admin_panel(call: CallbackQuery):
     await call.answer()
 
 
-@router.callback_query(F.data == "admin_stats")
-async def admin_stats(call: CallbackQuery):
+async def admin_stats(call: types.CallbackQuery):
     if not is_admin(call.from_user.id):
         return
     total = await count_users()
@@ -61,8 +54,7 @@ async def admin_stats(call: CallbackQuery):
     await call.answer()
 
 
-@router.callback_query(F.data == "admin_queue")
-async def admin_queue(call: CallbackQuery):
+async def admin_queue(call: types.CallbackQuery):
     if not is_admin(call.from_user.id):
         return
     queue = await get_queue()
@@ -73,13 +65,12 @@ async def admin_queue(call: CallbackQuery):
     for item in queue:
         wallet = item['wallet']
         lines.append(f"{item['position'] + 1}. <code>{wallet[:16]}...</code>")
-    text = "📋 <b>Очередь / Queue:</b>\n\n" + "\n".join(lines) if lines else "📋 Очередь пуста / Queue is empty"
+    text = "📋 <b>Очередь:</b>\n\n" + "\n".join(lines) if lines else "📋 Очередь пуста"
     await call.message.edit_text(text, reply_markup=admin_back_keyboard())
     await call.answer()
 
 
-@router.callback_query(F.data == "admin_set_amount")
-async def admin_set_amount(call: CallbackQuery, state: FSMContext):
+async def admin_set_amount(call: types.CallbackQuery, state: FSMContext):
     if not is_admin(call.from_user.id):
         return
     await call.message.edit_text("💰 Введите новую сумму доната в USDT:", reply_markup=admin_back_keyboard())
@@ -87,39 +78,35 @@ async def admin_set_amount(call: CallbackQuery, state: FSMContext):
     await call.answer()
 
 
-@router.message(AdminState.waiting_amount)
-async def process_amount(message: Message, state: FSMContext):
+async def process_amount(message: types.Message, state: FSMContext):
     if not is_admin(message.from_user.id):
         return
     try:
         amount = float(message.text.strip())
         await set_setting('donation_amount', str(amount))
-        await state.clear()
-        await message.answer(f"✅ Сумма обновлена: <b>{amount} USDT</b>", reply_markup=admin_back_keyboard())
+        await state.finish()
+        await message.answer(f"✅ Сумма: <b>{amount} USDT</b>", reply_markup=admin_back_keyboard())
     except ValueError:
         await message.answer("❌ Введите число!")
 
 
-@router.callback_query(F.data == "admin_set_wallet")
-async def admin_set_wallet(call: CallbackQuery, state: FSMContext):
+async def admin_set_wallet(call: types.CallbackQuery, state: FSMContext):
     if not is_admin(call.from_user.id):
         return
-    await call.message.edit_text("👛 Введите адрес кошелька администратора:", reply_markup=admin_back_keyboard())
+    await call.message.edit_text("👛 Введите адрес кошелька:", reply_markup=admin_back_keyboard())
     await state.set_state(AdminState.waiting_wallet)
     await call.answer()
 
 
-@router.message(AdminState.waiting_wallet)
-async def process_wallet(message: Message, state: FSMContext):
+async def process_wallet(message: types.Message, state: FSMContext):
     if not is_admin(message.from_user.id):
         return
     await set_setting('admin_wallet', message.text.strip())
-    await state.clear()
+    await state.finish()
     await message.answer("✅ Кошелёк обновлён.", reply_markup=admin_back_keyboard())
 
 
-@router.callback_query(F.data == "admin_set_ad")
-async def admin_set_ad(call: CallbackQuery, state: FSMContext):
+async def admin_set_ad(call: types.CallbackQuery, state: FSMContext):
     if not is_admin(call.from_user.id):
         return
     await call.message.edit_text("📢 Введите текст рекламы (или /skip чтобы убрать):", reply_markup=admin_back_keyboard())
@@ -127,18 +114,16 @@ async def admin_set_ad(call: CallbackQuery, state: FSMContext):
     await call.answer()
 
 
-@router.message(AdminState.waiting_ad)
-async def process_ad(message: Message, state: FSMContext):
+async def process_ad(message: types.Message, state: FSMContext):
     if not is_admin(message.from_user.id):
         return
     text = "" if message.text.strip() == "/skip" else message.text.strip()
     await set_setting('ad_text', text)
-    await state.clear()
+    await state.finish()
     await message.answer("✅ Реклама обновлена.", reply_markup=admin_back_keyboard())
 
 
-@router.callback_query(F.data == "admin_broadcast")
-async def admin_broadcast(call: CallbackQuery, state: FSMContext):
+async def admin_broadcast(call: types.CallbackQuery, state: FSMContext):
     if not is_admin(call.from_user.id):
         return
     await call.message.edit_text("📣 Введите текст рассылки:", reply_markup=admin_back_keyboard())
@@ -146,11 +131,10 @@ async def admin_broadcast(call: CallbackQuery, state: FSMContext):
     await call.answer()
 
 
-@router.message(AdminState.waiting_broadcast)
-async def process_broadcast(message: Message, state: FSMContext):
+async def process_broadcast(message: types.Message, state: FSMContext):
     if not is_admin(message.from_user.id):
         return
-    await state.clear()
+    await state.finish()
     user_ids = await all_user_ids()
     sent = 0
     for uid in user_ids:
@@ -159,4 +143,19 @@ async def process_broadcast(message: Message, state: FSMContext):
             sent += 1
         except Exception:
             pass
-    await message.answer(f"✅ Рассылка завершена. Отправлено: {sent}", reply_markup=admin_back_keyboard())
+    await message.answer(f"✅ Рассылка: {sent}", reply_markup=admin_back_keyboard())
+
+
+def register_admin(dp: Dispatcher):
+    dp.register_message_handler(cmd_admin, commands=["admin"], state="*")
+    dp.register_callback_query_handler(admin_panel, lambda c: c.data == "admin_panel", state="*")
+    dp.register_callback_query_handler(admin_stats, lambda c: c.data == "admin_stats", state="*")
+    dp.register_callback_query_handler(admin_queue, lambda c: c.data == "admin_queue", state="*")
+    dp.register_callback_query_handler(admin_set_amount, lambda c: c.data == "admin_set_amount", state="*")
+    dp.register_message_handler(process_amount, state=AdminState.waiting_amount)
+    dp.register_callback_query_handler(admin_set_wallet, lambda c: c.data == "admin_set_wallet", state="*")
+    dp.register_message_handler(process_wallet, state=AdminState.waiting_wallet)
+    dp.register_callback_query_handler(admin_set_ad, lambda c: c.data == "admin_set_ad", state="*")
+    dp.register_message_handler(process_ad, state=AdminState.waiting_ad)
+    dp.register_callback_query_handler(admin_broadcast, lambda c: c.data == "admin_broadcast", state="*")
+    dp.register_message_handler(process_broadcast, state=AdminState.waiting_broadcast)
