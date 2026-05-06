@@ -1,8 +1,7 @@
 import uuid
-from aiogram import Router, F
-from aiogram.types import CallbackQuery, Message
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
+from aiogram import Dispatcher, types
+from aiogram.dispatcher import FSMContext
+from aiogram.dispatcher.filters.state import State, StatesGroup
 
 from database import (
     get_user, set_user_wallet, get_user_wallet,
@@ -15,8 +14,6 @@ from keyboards.keyboards import (
     back_keyboard, check_payment_keyboard, main_menu_keyboard
 )
 from locales import ru, en
-
-router = Router()
 
 
 def get_texts(lang: str):
@@ -32,8 +29,7 @@ class DonationState(StatesGroup):
     waiting_wallet = State()
 
 
-@router.callback_query(F.data == "agree_rules")
-async def agree_rules(call: CallbackQuery, state: FSMContext):
+async def agree_rules(call: types.CallbackQuery, state: FSMContext):
     user_id = call.from_user.id
     lang = await get_lang(user_id)
     t = get_texts(lang)
@@ -56,8 +52,7 @@ async def agree_rules(call: CallbackQuery, state: FSMContext):
     await call.answer()
 
 
-@router.message(DonationState.waiting_wallet)
-async def process_wallet(message: Message, state: FSMContext):
+async def process_wallet(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
     lang = await get_lang(user_id)
     t = get_texts(lang)
@@ -68,7 +63,7 @@ async def process_wallet(message: Message, state: FSMContext):
         return
 
     await set_user_wallet(user_id, wallet)
-    await state.clear()
+    await state.finish()
 
     queue_wallets = await get_queue_wallets()
     admin_wallet = await get_admin_wallet()
@@ -80,11 +75,10 @@ async def process_wallet(message: Message, state: FSMContext):
     targets = targets[:5]
 
     if not targets:
-        await message.answer("⚠️ Система ещё не настроена. Обратитесь к администратору.")
+        await message.answer("⚠️ Система не настроена. Обратитесь к администратору.")
         return
 
     amount = await get_donation_amount()
-
     addr_text = ""
     for i, addr in enumerate(targets, 1):
         addr_text += f"{i}. <code>{addr}</code>\n"
@@ -99,8 +93,7 @@ async def process_wallet(message: Message, state: FSMContext):
     )
 
 
-@router.callback_query(F.data == "check_payment")
-async def check_payment(call: CallbackQuery):
+async def check_payment(call: types.CallbackQuery):
     user_id = call.from_user.id
     lang = await get_lang(user_id)
     t = get_texts(lang)
@@ -138,3 +131,9 @@ async def check_payment(call: CallbackQuery):
             t["payment_failed"],
             reply_markup=check_payment_keyboard(lang)
         )
+
+
+def register_donation(dp: Dispatcher):
+    dp.register_callback_query_handler(agree_rules, lambda c: c.data == "agree_rules", state="*")
+    dp.register_message_handler(process_wallet, state=DonationState.waiting_wallet)
+    dp.register_callback_query_handler(check_payment, lambda c: c.data == "check_payment", state="*")
