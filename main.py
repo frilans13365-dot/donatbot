@@ -54,4 +54,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main()@dp.message_handler()
+async def echo_all(message: types.Message):
+    await message.answer("✅ Бот работает! Ваше сообщение получено, но нет обработчика для этой команды.")
