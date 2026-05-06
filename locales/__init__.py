@@ -1,2 +1,2 @@
-from .ru import ru
-from .en import en
+from .ru import TEXTS as ru
+from .en import TEXTS as en
