@@ -7,16 +7,16 @@ TEXTS = {
     "main_menu_btn": "Main menu",
     "rules": "DonatBot Rules\n\n1. Send a donation to 5 addresses\n2. Be sure to include the word DOJO\n3. After confirmation, all 5 addresses will be available",
 }
-        "📜 <b>DonatBot Rules</b>\n\n"
-        "1. You send a donation to 5 addresses of the specified amount.\n"
-        "2. You MUST include the word <b>DONAT</b> in the transaction comment.\n"
-        "3. After all 5 donations are confirmed — your address is added to the system.\n"
-        "4. As new participants join, you move up the queue.\n"
-        "5. When you reach position 2 — new participants donate to you.\n"
-        "6. All data is protected with end-to-end encryption (E2E encryption).\n"
-        "7. Minimum donation amount: <b>{amount} USDT</b>\n\n"
-        "⚠️ Violation of rules leads to exclusion from the system without refund.\n\n"
-        "By continuing, you agree to the bot rules."
+    "📜 <b>DonatBot Rules</b>\n\n"
+    "1. You send a donation to 5 addresses of the specified amount.\n"
+    "2. You MUST include the word <b>DONAT</b> in the transaction comment.\n"
+    "3. After all 5 donations are confirmed — your address is added to the system.\n"
+    "4. As new participants join, you move up the queue.\n"
+    "5. When you reach position 2 — new participants donate to you.\n"
+    "6. All data is protected with end-to-end encryption (E2E encryption).\n"
+    "7. Minimum donation amount: <b>{amount} USDT</b>\n\n"
+    "⚠️ Violation of rules leads to exclusion from the system without refund.\n\n"
+    "By continuing, you agree to the bot rules."
     ),
     "enter_wallet": "💳 Enter your USDT wallet address:",
     "invalid_wallet": "❌ Invalid address format. Please try again.",
