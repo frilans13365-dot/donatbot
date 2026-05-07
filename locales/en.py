@@ -1,14 +1,11 @@
 TEXTS = {
     "choose_language": "Choose language",
-    "welcome": (
-        "<b>Welcome to DonatBot</b>\n\n"
-        "This is a decentralized system\n{ad}"
-    ),
+    "welcome": "<b>Welcome to DonatBot</b>",
     "rules_btn": "Rules",
     "agree_btn": "I agree",
     "back_btn": "Back",
     "main_menu_btn": "Main menu",
-    "rules": "DonatBot Rules\n\n1. Game rules selection.\n2. Game rules.\n3. Game rules.\n4. Game rules.\n5. Game rules.\n6. Game rules.\n7. Game rules.\n8. Game rules.\n9. Game rules.\n10. Game rules.",
+    "rules": "DonatBot Rules\n\n1. Send a donation to 5 addresses\n2. Be sure to include the word DOJO\n3. After confirmation, all 5 addresses will be available",
 }
         "📜 <b>DonatBot Rules</b>\n\n"
         "1. You send a donation to 5 addresses of the specified amount.\n"
