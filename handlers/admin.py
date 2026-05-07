@@ -32,7 +32,10 @@ async def admin_panel(call: types.CallbackQuery):
     if not is_admin(call.from_user.id):
         await call.answer("⛔ Access denied", show_alert=True)
         return
-    await call.message.edit_text("🔧 <b>Admin Panel</b>", reply_markup=admin_keyboard())
+    try:
+        await call.message.edit_text("🔧 <b>Admin Panel</b>", reply_markup=admin_keyboard())
+    except Exception:
+        await call.message.answer("🔧 <b>Admin Panel</b>", reply_markup=admin_keyboard())
     await call.answer()
 
 
@@ -50,7 +53,10 @@ async def admin_stats(call: types.CallbackQuery):
         f"💰 Сумма / Amount: <b>{amount} USDT</b>\n"
         f"📋 В очереди / Queue: <b>{in_queue}</b>"
     )
-    await call.message.edit_text(text, reply_markup=admin_back_keyboard())
+    try:
+        await call.message.edit_text(text, reply_markup=admin_back_keyboard())
+    except Exception:
+        await call.message.answer(text, reply_markup=admin_back_keyboard())
     await call.answer()
 
 
@@ -66,14 +72,20 @@ async def admin_queue(call: types.CallbackQuery):
         wallet = item['wallet']
         lines.append(f"{item['position'] + 1}. <code>{wallet[:16]}...</code>")
     text = "📋 <b>Очередь:</b>\n\n" + "\n".join(lines) if lines else "📋 Очередь пуста"
-    await call.message.edit_text(text, reply_markup=admin_back_keyboard())
+    try:
+        await call.message.edit_text(text, reply_markup=admin_back_keyboard())
+    except Exception:
+        await call.message.answer(text, reply_markup=admin_back_keyboard())
     await call.answer()
 
 
 async def admin_set_amount(call: types.CallbackQuery, state: FSMContext):
     if not is_admin(call.from_user.id):
         return
-    await call.message.edit_text("💰 Введите новую сумму доната в USDT:", reply_markup=admin_back_keyboard())
+    try:
+        await call.message.edit_text("💰 Введите новую сумму доната в USDT:", reply_markup=admin_back_keyboard())
+    except Exception:
+        await call.message.answer("💰 Введите новую сумму доната в USDT:", reply_markup=admin_back_keyboard())
     await state.set_state(AdminState.waiting_amount)
     await call.answer()
 
@@ -93,7 +105,10 @@ async def process_amount(message: types.Message, state: FSMContext):
 async def admin_set_wallet(call: types.CallbackQuery, state: FSMContext):
     if not is_admin(call.from_user.id):
         return
-    await call.message.edit_text("👛 Введите адрес кошелька:", reply_markup=admin_back_keyboard())
+    try:
+        await call.message.edit_text("👛 Введите адрес кошелька:", reply_markup=admin_back_keyboard())
+    except Exception:
+        await call.message.answer("👛 Введите адрес кошелька:", reply_markup=admin_back_keyboard())
     await state.set_state(AdminState.waiting_wallet)
     await call.answer()
 
@@ -109,7 +124,10 @@ async def process_wallet(message: types.Message, state: FSMContext):
 async def admin_set_ad(call: types.CallbackQuery, state: FSMContext):
     if not is_admin(call.from_user.id):
         return
-    await call.message.edit_text("📢 Введите текст рекламы (или /skip чтобы убрать):", reply_markup=admin_back_keyboard())
+    try:
+        await call.message.edit_text("📢 Введите текст рекламы (или /skip чтобы убрать):", reply_markup=admin_back_keyboard())
+    except Exception:
+        await call.message.answer("📢 Введите текст рекламы (или /skip чтобы убрать):", reply_markup=admin_back_keyboard())
     await state.set_state(AdminState.waiting_ad)
     await call.answer()
 
@@ -126,7 +144,10 @@ async def process_ad(message: types.Message, state: FSMContext):
 async def admin_broadcast(call: types.CallbackQuery, state: FSMContext):
     if not is_admin(call.from_user.id):
         return
-    await call.message.edit_text("📣 Введите текст рассылки:", reply_markup=admin_back_keyboard())
+    try:
+        await call.message.edit_text("📣 Введите текст рассылки:", reply_markup=admin_back_keyboard())
+    except Exception:
+        await call.message.answer("📣 Введите текст рассылки:", reply_markup=admin_back_keyboard())
     await state.set_state(AdminState.waiting_broadcast)
     await call.answer()
 
