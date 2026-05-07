@@ -1,6 +1,6 @@
 TEXTS = {
     "choose_language": "Choose language",
-    "welcome": "<b>Welcome to DonatBot</b>",
+    "welcome": "Welcome to DonatBot",
     "rules_btn": "Rules",
     "agree_btn": "I agree",
     "back_btn": "Back",
@@ -20,24 +20,24 @@ TEXTS = {
     "enter_wallet": "💳 Enter your USDT wallet address:",
     "invalid_wallet": "❌ Invalid address format. Please try again.",
     "donate_instructions": (
-        "💸 <b>Send donations to the following addresses:</b>\n\n"
-        "Amount: <b>{amount} USDT</b>\n"
-        "Comment: <b>DONAT</b>\n\n"
+        "💸 Send donations to the following addresses:\n\n"
+        "Amount: {amount} USDT\n"
+        "Comment: DONAT\n\n"
         "{addresses}\n\n"
         "After sending all donations press the button ✅"
     ),
     "check_payment_btn": "✅ I sent all donations",
     "payment_pending": "⏳ Checking your payments... Please wait.",
     "payment_success": (
-        "🎉 <b>All donations confirmed!</b>\n\n"
+        "🎉 All donations confirmed!\n\n"
         "Your address has been added to the system.\n"
         "Wait for new participants — you will move up!"
     ),
     "payment_failed": "❌ Not all payments confirmed. Please check and try again.",
     "already_in_queue": "✅ You are already participating in the system!",
-    "queue_position": "📊 Your position: <b>{position}</b> of {total}",
+    "queue_position": "📊 Your position: {position} of {total}",
     "graduated": (
-        "🎊 <b>Congratulations!</b>\n\n"
+        "🎊 Congratulations!\n\n"
         "You have completed the full system cycle.\n"
         "Want to participate again? Send /start"
     ),
@@ -46,7 +46,7 @@ TEXTS = {
     "set_ad_btn": "📢 Change advertisement",
     "broadcast_btn": "📣 Broadcast",
     "enter_amount": "💰 Enter new donation amount in USDT:",
-    "amount_set": "✅ Donation amount updated: <b>{amount} USDT</b>",
+    "amount_set": "✅ Donation amount updated: {amount} USDT",
     "enter_admin_wallet": "👛 Enter new admin wallet address:",
     "wallet_set": "✅ Wallet address updated.",
     "enter_ad": "📢 Enter advertisement text (or /skip to remove):",
@@ -54,5 +54,5 @@ TEXTS = {
     "enter_broadcast": "📣 Enter broadcast message:",
     "broadcast_done": "✅ Broadcast complete. Sent: {sent}",
     "queue_view_btn": "📋 Queue",
-    "queue_list": "📋 <b>Current queue:</b>\n\n{list}",
+    "queue_list": "📋 Current queue:\n\n{list}",
 }
