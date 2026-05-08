@@ -25,24 +25,12 @@ register_admin(dp)
 async def on_startup(app):
     await init_db()
     print("✅ DB initialized")
-    url = f"https://api.telegram.org/bot{config.BOT_TOKEN}/setWebhook"
-    data = {"url": f"{config.BASE_URL}/webhook"}
-    import aiohttp
-    async with aiohttp.ClientSession() as session:
-        async with session.post(url, json=data) as resp:
-            result = await resp.json()
-            print(f"✅ Webhook result: {result}")
-
-
-async def on_shutdown(app):
-    await bot.delete_webhook()
 
 
 def main():
     app = get_new_configured_app(dispatcher=dp, path="/webhook")
     app.router.add_post("/payment-webhook", payment_webhook)
     app.on_startup.append(on_startup)
-    app.on_shutdown.append(on_shutdown)
     web.run_app(app, host="0.0.0.0", port=config.WEBHOOK_PORT)
 
 
