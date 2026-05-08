@@ -105,12 +105,11 @@ async def background_checker(bot):
                     ok = await check_ton_usdt_transaction(wallet, addr, amount)
                     if ok:
                         confirmed += 1
-                    await asyncio.sleep(1)  # пауза между запросами
+                    await asyncio.sleep(0.5)
 
                 await increment_pending_attempts(user_id)
 
                 if confirmed >= len(targets):
-                    # Все платежи подтверждены
                     await remove_pending_check(user_id)
                     removed_user_id = await add_to_queue(user_id, wallet)
                     await set_user_status(user_id, 'active')
@@ -137,7 +136,7 @@ async def background_checker(bot):
         except Exception as e:
             print(f"Background checker error: {e}")
 
-        await asyncio.sleep(30)  # проверяем каждые 30 секунд
+        await asyncio.sleep(30)
 
 
 async def agree_rules(call: types.CallbackQuery, state: FSMContext):
