@@ -24,15 +24,17 @@ register_admin(dp)
 
 async def on_startup(app):
     await init_db()
-    await asyncio.sleep(2)
-    await bot.delete_webhook()
-    await asyncio.sleep(1)
-    await bot.set_webhook(f"{config.BASE_URL}/webhook")
+    await asyncio.sleep(3)
+    try:
+        await bot.delete_webhook()
+        await bot.set_webhook(f"{config.BASE_URL}/webhook")
+        print(f"✅ Webhook set: {config.BASE_URL}/webhook")
+    except Exception as e:
+        print(f"❌ Webhook error: {e}")
 
 
 async def on_shutdown(app):
     await bot.delete_webhook()
-    await bot.session.close()
 
 
 def main():
