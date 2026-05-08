@@ -1,4 +1,5 @@
 import uuid
+import asyncio
 import aiohttp
 from aiogram import Dispatcher, types
 from aiogram.dispatcher import FSMContext
@@ -7,9 +8,10 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from database import (
     get_user, set_user_wallet, get_user_wallet,
     get_queue_wallets, get_admin_wallet,
-    get_donation_amount, create_payment, get_paid_count,
+    get_donation_amount, create_payment,
     add_to_queue, is_in_queue, get_user_queue_position,
-    queue_count, set_user_status, confirm_payment
+    queue_count, set_user_status,
+    add_pending_check, remove_pending_check
 )
 from keyboards.keyboards import (
     back_keyboard, check_payment_keyboard, main_menu_keyboard
@@ -34,12 +36,10 @@ class DonationState(StatesGroup):
 async def check_ton_usdt_transaction(from_address: str, to_address: str, amount: float) -> bool:
     """Проверяет прошла ли транзакция USDT Jetton на TON с комментарием DONAT"""
     try:
-        # USDT Jetton на TON
         USDT_MASTER = "EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs"
         headers = {"X-API-Key": config.TONCENTER_API_KEY}
 
-        # Получаем Jetton кошелёк пользователя для USDT
-        url = f"https://toncenter.com/api/v3/jetton/wallets"
+        url = "https://toncenter.com/api/v3/jetton/wallets"
         params = {
             "owner_address": from_address,
             "jetton_address": USDT_MASTER,
@@ -53,8 +53,7 @@ async def check_ton_usdt_transaction(from_address: str, to_address: str, amount:
                     return False
                 jetton_wallet = wallets[0]["address"]
 
-            # Получаем транзакции Jetton кошелька
-            url2 = f"https://toncenter.com/api/v3/jetton/transfers"
+            url2 = "https://toncenter.com/api/v3/jetton/transfers"
             params2 = {
                 "address": jetton_wallet,
                 "limit": 50,
@@ -63,11 +62,9 @@ async def check_ton_usdt_transaction(from_address: str, to_address: str, amount:
             async with session.get(url2, params=params2, headers=headers) as resp2:
                 data2 = await resp2.json()
                 transfers = data2.get("jetton_transfers", [])
-
-                amount_nano = int(amount * 1_000_000)  # USDT 6 decimals
+                amount_nano = int(amount * 1_000_000)
 
                 for tx in transfers:
-                    # Проверяем получателя
                     dest = tx.get("destination", {})
                     if isinstance(dest, dict):
                         dest_addr = dest.get("address", "")
@@ -77,12 +74,10 @@ async def check_ton_usdt_transaction(from_address: str, to_address: str, amount:
                     if dest_addr != to_address:
                         continue
 
-                    # Проверяем сумму
                     tx_amount = int(tx.get("amount", 0))
                     if tx_amount < amount_nano:
                         continue
 
-                    # Проверяем комментарий
                     comment = tx.get("comment", "") or ""
                     if "DONAT" in comment.upper():
                         return True
@@ -93,6 +88,58 @@ async def check_ton_usdt_transaction(from_address: str, to_address: str, amount:
         return False
 
 
+async def background_checker(bot):
+    """Фоновая задача проверки транзакций"""
+    from database import get_pending_checks, increment_pending_attempts, remove_pending_check
+    while True:
+        try:
+            pending = await get_pending_checks()
+            for item in pending:
+                user_id = item['user_id']
+                wallet = item['wallet']
+                targets = item['target_wallets']
+                amount = item['amount']
+
+                confirmed = 0
+                for addr in targets:
+                    ok = await check_ton_usdt_transaction(wallet, addr, amount)
+                    if ok:
+                        confirmed += 1
+                    await asyncio.sleep(1)  # пауза между запросами
+
+                await increment_pending_attempts(user_id)
+
+                if confirmed >= len(targets):
+                    # Все платежи подтверждены
+                    await remove_pending_check(user_id)
+                    removed_user_id = await add_to_queue(user_id, wallet)
+                    await set_user_status(user_id, 'active')
+
+                    lang = await get_lang(user_id)
+                    t = get_texts(lang)
+                    try:
+                        await bot.send_message(
+                            user_id,
+                            t["payment_success"],
+                            reply_markup=main_menu_keyboard(lang)
+                        )
+                    except Exception:
+                        pass
+
+                    if removed_user_id:
+                        try:
+                            removed_lang = await get_lang(removed_user_id)
+                            removed_t = get_texts(removed_lang)
+                            await bot.send_message(removed_user_id, removed_t["graduated"])
+                        except Exception:
+                            pass
+
+        except Exception as e:
+            print(f"Background checker error: {e}")
+
+        await asyncio.sleep(30)  # проверяем каждые 30 секунд
+
+
 async def agree_rules(call: types.CallbackQuery, state: FSMContext):
     user_id = call.from_user.id
     lang = await get_lang(user_id)
@@ -101,17 +148,29 @@ async def agree_rules(call: types.CallbackQuery, state: FSMContext):
     if await is_in_queue(user_id):
         pos = await get_user_queue_position(user_id)
         total = await queue_count()
-        await call.message.edit_text(
-            t["already_in_queue"] + "\n\n" + t["queue_position"].format(position=pos, total=total),
-            reply_markup=main_menu_keyboard(lang)
-        )
+        try:
+            await call.message.edit_text(
+                t["already_in_queue"] + "\n\n" + t["queue_position"].format(position=pos, total=total),
+                reply_markup=main_menu_keyboard(lang)
+            )
+        except Exception:
+            await call.message.answer(
+                t["already_in_queue"] + "\n\n" + t["queue_position"].format(position=pos, total=total),
+                reply_markup=main_menu_keyboard(lang)
+            )
         await call.answer()
         return
 
-    await call.message.edit_text(
-        t["enter_wallet"],
-        reply_markup=back_keyboard(lang, "show_rules")
-    )
+    try:
+        await call.message.edit_text(
+            t["enter_wallet"],
+            reply_markup=back_keyboard(lang, "show_rules")
+        )
+    except Exception:
+        await call.message.answer(
+            t["enter_wallet"],
+            reply_markup=back_keyboard(lang, "show_rules")
+        )
     await state.set_state(DonationState.waiting_wallet)
     await call.answer()
 
@@ -123,7 +182,6 @@ async def process_wallet(message: types.Message, state: FSMContext):
 
     wallet = message.text.strip()
 
-    # Проверка TON адреса
     if not (wallet.startswith("EQ") or wallet.startswith("UQ")) or len(wallet) < 40:
         await message.answer(t["invalid_wallet"])
         return
@@ -164,15 +222,9 @@ async def check_payment(call: types.CallbackQuery):
     lang = await get_lang(user_id)
     t = get_texts(lang)
 
-    try:
-        await call.message.edit_text(t["payment_pending"])
-    except Exception:
-        pass
-    await call.answer()
-
     user_wallet = await get_user_wallet(user_id)
     if not user_wallet:
-        await call.message.answer(t["payment_failed"], reply_markup=check_payment_keyboard(lang))
+        await call.answer("❌ Адрес кошелька не найден", show_alert=True)
         return
 
     queue_wallets = await get_queue_wallets()
@@ -184,46 +236,14 @@ async def check_payment(call: types.CallbackQuery):
     targets = targets[:5]
 
     amount = await get_donation_amount()
-    confirmed = 0
 
-    for addr in targets:
-        ok = await check_ton_usdt_transaction(user_wallet, addr, amount)
-        if ok:
-            confirmed += 1
+    await add_pending_check(user_id, user_wallet, targets, amount)
 
-    required = len(targets)
-
-    if confirmed >= required and user_wallet:
-        removed_user_id = await add_to_queue(user_id, user_wallet)
-        await set_user_status(user_id, 'active')
-        try:
-            await call.message.edit_text(
-                t["payment_success"],
-                reply_markup=main_menu_keyboard(lang)
-            )
-        except Exception:
-            await call.message.answer(
-                t["payment_success"],
-                reply_markup=main_menu_keyboard(lang)
-            )
-        if removed_user_id:
-            try:
-                removed_lang = await get_lang(removed_user_id)
-                removed_t = get_texts(removed_lang)
-                await call.bot.send_message(removed_user_id, removed_t["graduated"])
-            except Exception:
-                pass
-    else:
-        try:
-            await call.message.edit_text(
-                t["payment_failed"].format(confirmed=confirmed, required=required),
-                reply_markup=check_payment_keyboard(lang)
-            )
-        except Exception:
-            await call.message.answer(
-                t["payment_failed"].format(confirmed=confirmed, required=required),
-                reply_markup=check_payment_keyboard(lang)
-            )
+    try:
+        await call.message.edit_text(t["payment_queued"])
+    except Exception:
+        await call.message.answer(t["payment_queued"])
+    await call.answer()
 
 
 def register_donation(dp: Dispatcher):
