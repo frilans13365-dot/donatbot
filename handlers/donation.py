@@ -1,4 +1,5 @@
 import uuid
+import aiohttp
 from aiogram import Dispatcher, types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
@@ -8,12 +9,13 @@ from database import (
     get_queue_wallets, get_admin_wallet,
     get_donation_amount, create_payment, get_paid_count,
     add_to_queue, is_in_queue, get_user_queue_position,
-    queue_count, set_user_status
+    queue_count, set_user_status, confirm_payment
 )
 from keyboards.keyboards import (
     back_keyboard, check_payment_keyboard, main_menu_keyboard
 )
 from locales import ru, en
+from config import config
 
 
 def get_texts(lang: str):
@@ -27,6 +29,68 @@ async def get_lang(user_id: int) -> str:
 
 class DonationState(StatesGroup):
     waiting_wallet = State()
+
+
+async def check_ton_usdt_transaction(from_address: str, to_address: str, amount: float) -> bool:
+    """Проверяет прошла ли транзакция USDT Jetton на TON с комментарием DONAT"""
+    try:
+        # USDT Jetton на TON
+        USDT_MASTER = "EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs"
+        headers = {"X-API-Key": config.TONCENTER_API_KEY}
+
+        # Получаем Jetton кошелёк пользователя для USDT
+        url = f"https://toncenter.com/api/v3/jetton/wallets"
+        params = {
+            "owner_address": from_address,
+            "jetton_address": USDT_MASTER,
+            "limit": 1
+        }
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, params=params, headers=headers) as resp:
+                data = await resp.json()
+                wallets = data.get("jetton_wallets", [])
+                if not wallets:
+                    return False
+                jetton_wallet = wallets[0]["address"]
+
+            # Получаем транзакции Jetton кошелька
+            url2 = f"https://toncenter.com/api/v3/jetton/transfers"
+            params2 = {
+                "address": jetton_wallet,
+                "limit": 50,
+                "direction": "out"
+            }
+            async with session.get(url2, params=params2, headers=headers) as resp2:
+                data2 = await resp2.json()
+                transfers = data2.get("jetton_transfers", [])
+
+                amount_nano = int(amount * 1_000_000)  # USDT 6 decimals
+
+                for tx in transfers:
+                    # Проверяем получателя
+                    dest = tx.get("destination", {})
+                    if isinstance(dest, dict):
+                        dest_addr = dest.get("address", "")
+                    else:
+                        dest_addr = str(dest)
+
+                    if dest_addr != to_address:
+                        continue
+
+                    # Проверяем сумму
+                    tx_amount = int(tx.get("amount", 0))
+                    if tx_amount < amount_nano:
+                        continue
+
+                    # Проверяем комментарий
+                    comment = tx.get("comment", "") or ""
+                    if "DONAT" in comment.upper():
+                        return True
+
+        return False
+    except Exception as e:
+        print(f"TON check error: {e}")
+        return False
 
 
 async def agree_rules(call: types.CallbackQuery, state: FSMContext):
@@ -58,7 +122,9 @@ async def process_wallet(message: types.Message, state: FSMContext):
     t = get_texts(lang)
 
     wallet = message.text.strip()
-    if len(wallet) < 10:
+
+    # Проверка TON адреса
+    if not (wallet.startswith("EQ") or wallet.startswith("UQ")) or len(wallet) < 40:
         await message.answer(t["invalid_wallet"])
         return
 
@@ -98,11 +164,16 @@ async def check_payment(call: types.CallbackQuery):
     lang = await get_lang(user_id)
     t = get_texts(lang)
 
-    await call.message.edit_text(t["payment_pending"])
+    try:
+        await call.message.edit_text(t["payment_pending"])
+    except Exception:
+        pass
     await call.answer()
 
-    paid = await get_paid_count(user_id)
-    wallet = await get_user_wallet(user_id)
+    user_wallet = await get_user_wallet(user_id)
+    if not user_wallet:
+        await call.message.answer(t["payment_failed"], reply_markup=check_payment_keyboard(lang))
+        return
 
     queue_wallets = await get_queue_wallets()
     admin_wallet = await get_admin_wallet()
@@ -110,15 +181,31 @@ async def check_payment(call: types.CallbackQuery):
     if admin_wallet:
         targets.append(admin_wallet)
     targets.extend(queue_wallets)
-    required = min(len(targets), 5)
+    targets = targets[:5]
 
-    if paid >= required and wallet:
-        removed_user_id = await add_to_queue(user_id, wallet)
+    amount = await get_donation_amount()
+    confirmed = 0
+
+    for addr in targets:
+        ok = await check_ton_usdt_transaction(user_wallet, addr, amount)
+        if ok:
+            confirmed += 1
+
+    required = len(targets)
+
+    if confirmed >= required and user_wallet:
+        removed_user_id = await add_to_queue(user_id, user_wallet)
         await set_user_status(user_id, 'active')
-        await call.message.edit_text(
-            t["payment_success"],
-            reply_markup=main_menu_keyboard(lang)
-        )
+        try:
+            await call.message.edit_text(
+                t["payment_success"],
+                reply_markup=main_menu_keyboard(lang)
+            )
+        except Exception:
+            await call.message.answer(
+                t["payment_success"],
+                reply_markup=main_menu_keyboard(lang)
+            )
         if removed_user_id:
             try:
                 removed_lang = await get_lang(removed_user_id)
@@ -127,10 +214,16 @@ async def check_payment(call: types.CallbackQuery):
             except Exception:
                 pass
     else:
-        await call.message.edit_text(
-            t["payment_failed"],
-            reply_markup=check_payment_keyboard(lang)
-        )
+        try:
+            await call.message.edit_text(
+                t["payment_failed"].format(confirmed=confirmed, required=required),
+                reply_markup=check_payment_keyboard(lang)
+            )
+        except Exception:
+            await call.message.answer(
+                t["payment_failed"].format(confirmed=confirmed, required=required),
+                reply_markup=check_payment_keyboard(lang)
+            )
 
 
 def register_donation(dp: Dispatcher):
