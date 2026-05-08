@@ -30,6 +30,12 @@ TEXTS = {
     ),
     "check_payment_btn": "✅ I sent all donations",
     "payment_pending": "⏳ Checking your blockchain transactions... Please wait.",
+    "payment_queued": (
+        "⏳ Your payment has been queued for verification.\n\n"
+        "We check transactions every 30 seconds.\n"
+        "Once all donations are confirmed — you will receive a notification automatically.\n\n"
+        "Maximum waiting time: 2 hours."
+    ),
     "payment_success": (
         "🎉 All donations confirmed!\n\n"
         "Your address has been added to the system.\n"
