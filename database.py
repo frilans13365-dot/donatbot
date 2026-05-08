@@ -55,24 +55,34 @@ async def init_db():
                 value TEXT NOT NULL
             )
         """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS pending_checks (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL UNIQUE,
+                wallet_encrypted TEXT NOT NULL,
+                target_wallets_encrypted TEXT NOT NULL,
+                amount FLOAT NOT NULL,
+                created_at TIMESTAMP DEFAULT NOW(),
+                attempts INTEGER DEFAULT 0
+            )
+        """)
         # Миграции
         await conn.execute("""
-            ALTER TABLE payments 
+            ALTER TABLE payments
             ADD COLUMN IF NOT EXISTS target_wallet_encrypted TEXT
         """)
         await conn.execute("""
-            ALTER TABLE users 
+            ALTER TABLE users
             ADD COLUMN IF NOT EXISTS language TEXT DEFAULT 'ru'
         """)
         await conn.execute("""
-            ALTER TABLE users 
+            ALTER TABLE users
             ADD COLUMN IF NOT EXISTS wallet TEXT
         """)
         await conn.execute("""
-            ALTER TABLE users 
+            ALTER TABLE users
             ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'new'
         """)
-        # Исправляем тип колонки amount если она TEXT
         await conn.execute("""
             DO $$
             BEGIN
@@ -290,3 +300,52 @@ async def get_admin_wallet() -> str:
 
 async def get_ad_text() -> str:
     return await get_setting('ad_text')
+
+
+async def add_pending_check(user_id: int, wallet: str, target_wallets: List[str], amount: float):
+    pool = await get_pool()
+    encrypted_wallet = encrypt(wallet)
+    encrypted_targets = encrypt(",".join(target_wallets))
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "INSERT INTO pending_checks (user_id, wallet_encrypted, target_wallets_encrypted, amount) "
+            "VALUES ($1, $2, $3, $4) ON CONFLICT (user_id) DO UPDATE SET "
+            "wallet_encrypted=$2, target_wallets_encrypted=$3, amount=$4, created_at=NOW(), attempts=0",
+            user_id, encrypted_wallet, encrypted_targets, float(amount)
+        )
+
+
+async def get_pending_checks() -> List[dict]:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT * FROM pending_checks WHERE attempts < 240 "
+            "AND created_at > NOW() - INTERVAL '2 hours'"
+        )
+        result = []
+        for r in rows:
+            result.append({
+                'user_id': r['user_id'],
+                'wallet': decrypt(r['wallet_encrypted']),
+                'target_wallets': decrypt(r['target_wallets_encrypted']).split(","),
+                'amount': r['amount'],
+                'attempts': r['attempts']
+            })
+        return result
+
+
+async def increment_pending_attempts(user_id: int):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE pending_checks SET attempts=attempts+1 WHERE user_id=$1",
+            user_id
+        )
+
+
+async def remove_pending_check(user_id: int):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "DELETE FROM pending_checks WHERE user_id=$1", user_id
+        )
