@@ -21,7 +21,8 @@ async def get_lang(user_id: int) -> str:
     return user.get('language', 'ru')
 
 
-async def cmd_start(message: types.Message):
+async def cmd_start(message: types.Message, state: FSMContext):
+    await state.finish()
     user = await get_user(message.from_user.id)
     if not user or 'language' not in user:
         await message.answer(
@@ -39,7 +40,8 @@ async def cmd_start(message: types.Message):
         )
 
 
-async def set_language(call: types.CallbackQuery):
+async def set_language(call: types.CallbackQuery, state: FSMContext):
+    await state.finish()
     lang = call.data.replace("lang_", "")
     await set_user_language(call.from_user.id, lang)
     await create_user(call.from_user.id, lang)
@@ -56,7 +58,8 @@ async def set_language(call: types.CallbackQuery):
     await call.answer()
 
 
-async def main_menu(call: types.CallbackQuery):
+async def main_menu(call: types.CallbackQuery, state: FSMContext):
+    await state.finish()
     lang = await get_lang(call.from_user.id)
     t = get_texts(lang)
     ad = await get_ad_text()
