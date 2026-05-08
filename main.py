@@ -1,4 +1,5 @@
 import asyncio
+import requests
 from aiohttp import web
 from aiogram import Bot, Dispatcher
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
@@ -22,11 +23,16 @@ register_donation(dp)
 register_admin(dp)
 
 
-async def setup():
+async def on_startup(app):
     await init_db()
-    await bot.delete_webhook()
-    await bot.set_webhook(f"{config.BASE_URL}/webhook")
-    print(f"✅ Webhook set: {config.BASE_URL}/webhook")
+    print("✅ DB initialized")
+    url = f"https://api.telegram.org/bot{config.BOT_TOKEN}/setWebhook"
+    data = {"url": f"{config.BASE_URL}/webhook"}
+    import aiohttp
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=data) as resp:
+            result = await resp.json()
+            print(f"✅ Webhook result: {result}")
 
 
 async def on_shutdown(app):
@@ -34,12 +40,9 @@ async def on_shutdown(app):
 
 
 def main():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(setup())
-
     app = get_new_configured_app(dispatcher=dp, path="/webhook")
     app.router.add_post("/payment-webhook", payment_webhook)
+    app.on_startup.append(on_startup)
     app.on_shutdown.append(on_shutdown)
     web.run_app(app, host="0.0.0.0", port=config.WEBHOOK_PORT)
 
