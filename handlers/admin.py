@@ -22,16 +22,18 @@ class AdminState(StatesGroup):
     waiting_broadcast = State()
 
 
-async def cmd_admin(message: types.Message):
+async def cmd_admin(message: types.Message, state: FSMContext):
     if not is_admin(message.from_user.id):
         return
+    await state.finish()
     await message.answer("🔧 <b>Admin Panel</b>", reply_markup=admin_keyboard())
 
 
-async def admin_panel(call: types.CallbackQuery):
+async def admin_panel(call: types.CallbackQuery, state: FSMContext):
     if not is_admin(call.from_user.id):
         await call.answer("⛔ Access denied", show_alert=True)
         return
+    await state.finish()
     try:
         await call.message.edit_text("🔧 <b>Admin Panel</b>", reply_markup=admin_keyboard())
     except Exception:
