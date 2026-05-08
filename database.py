@@ -55,7 +55,7 @@ async def init_db():
                 value TEXT NOT NULL
             )
         """)
-        # Миграции — добавляем колонки если их нет
+        # Миграции
         await conn.execute("""
             ALTER TABLE payments 
             ADD COLUMN IF NOT EXISTS target_wallet_encrypted TEXT
@@ -71,6 +71,19 @@ async def init_db():
         await conn.execute("""
             ALTER TABLE users 
             ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'new'
+        """)
+        # Исправляем тип колонки amount если она TEXT
+        await conn.execute("""
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name='payments' AND column_name='amount'
+                    AND data_type='text'
+                ) THEN
+                    ALTER TABLE payments ALTER COLUMN amount TYPE FLOAT USING amount::float;
+                END IF;
+            END$$
         """)
         await conn.execute("""
             INSERT INTO settings (key, value) VALUES
@@ -228,7 +241,7 @@ async def create_payment(user_id: int, target_wallet: str, invoice_id: str, amou
         await conn.execute(
             "INSERT INTO payments (user_id, target_wallet_encrypted, invoice_id, amount) "
             "VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING",
-            user_id, encrypted, invoice_id, amount
+            user_id, encrypted, invoice_id, float(amount)
         )
 
 
