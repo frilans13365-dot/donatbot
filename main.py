@@ -34,13 +34,14 @@ async def on_shutdown(app):
 
 
 def main():
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     loop.run_until_complete(setup())
 
     app = get_new_configured_app(dispatcher=dp, path="/webhook")
     app.router.add_post("/payment-webhook", payment_webhook)
     app.on_shutdown.append(on_shutdown)
-    web.run_app(app, host="0.0.0.0", port=config.WEBHOOK_PORT, loop=loop)
+    web.run_app(app, host="0.0.0.0", port=config.WEBHOOK_PORT)
 
 
 if __name__ == "__main__":
