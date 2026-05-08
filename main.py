@@ -8,7 +8,7 @@ from aiogram.dispatcher.webhook import get_new_configured_app
 from config import config
 from database import init_db
 from handlers.start import register_start
-from handlers.donation import register_donation
+from handlers.donation import register_donation, background_checker
 from handlers.admin import register_admin
 from handlers.webhook import payment_webhook
 
@@ -25,6 +25,8 @@ register_admin(dp)
 async def on_startup(app):
     await init_db()
     print("✅ DB initialized")
+    asyncio.ensure_future(background_checker(bot))
+    print("✅ Background checker started")
 
 
 def main():
