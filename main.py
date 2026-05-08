@@ -23,8 +23,11 @@ register_admin(dp)
 
 
 async def on_startup(app):
-    await bot.set_webhook(f"{config.BASE_URL}/webhook")
     await init_db()
+    await asyncio.sleep(2)
+    await bot.delete_webhook()
+    await asyncio.sleep(1)
+    await bot.set_webhook(f"{config.BASE_URL}/webhook")
 
 
 async def on_shutdown(app):
