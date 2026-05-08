@@ -42,7 +42,7 @@ async def init_db():
             CREATE TABLE IF NOT EXISTS payments (
                 id SERIAL PRIMARY KEY,
                 user_id BIGINT NOT NULL,
-                target_wallet_encrypted TEXT NOT NULL,
+                target_wallet_encrypted TEXT,
                 invoice_id TEXT UNIQUE,
                 amount FLOAT NOT NULL,
                 status TEXT DEFAULT 'pending',
@@ -54,6 +54,23 @@ async def init_db():
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL
             )
+        """)
+        # Миграции — добавляем колонки если их нет
+        await conn.execute("""
+            ALTER TABLE payments 
+            ADD COLUMN IF NOT EXISTS target_wallet_encrypted TEXT
+        """)
+        await conn.execute("""
+            ALTER TABLE users 
+            ADD COLUMN IF NOT EXISTS language TEXT DEFAULT 'ru'
+        """)
+        await conn.execute("""
+            ALTER TABLE users 
+            ADD COLUMN IF NOT EXISTS wallet TEXT
+        """)
+        await conn.execute("""
+            ALTER TABLE users 
+            ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'new'
         """)
         await conn.execute("""
             INSERT INTO settings (key, value) VALUES
