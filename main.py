@@ -1,5 +1,4 @@
 import asyncio
-import requests
 from aiohttp import web
 from aiogram import Bot, Dispatcher
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
