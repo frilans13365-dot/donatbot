@@ -6,7 +6,7 @@ from config import config
 from database import (
     count_users, count_users_today, get_donation_amount,
     get_queue, queue_count, set_setting, all_user_ids,
-    get_admin_wallet
+    get_admin_wallet, add_to_queue
 )
 from keyboards.keyboards import admin_keyboard, admin_back_keyboard
 
@@ -20,6 +20,7 @@ class AdminState(StatesGroup):
     waiting_wallet = State()
     waiting_ad = State()
     waiting_broadcast = State()
+    waiting_queue_wallet = State()
 
 
 async def cmd_admin(message: types.Message, state: FSMContext):
@@ -108,9 +109,9 @@ async def admin_set_wallet(call: types.CallbackQuery, state: FSMContext):
     if not is_admin(call.from_user.id):
         return
     try:
-        await call.message.edit_text("👛 Введите адрес кошелька:", reply_markup=admin_back_keyboard())
+        await call.message.edit_text("👛 Введите TON адрес кошелька (EQ... или UQ...):", reply_markup=admin_back_keyboard())
     except Exception:
-        await call.message.answer("👛 Введите адрес кошелька:", reply_markup=admin_back_keyboard())
+        await call.message.answer("👛 Введите TON адрес кошелька (EQ... или UQ...):", reply_markup=admin_back_keyboard())
     await state.set_state(AdminState.waiting_wallet)
     await call.answer()
 
@@ -169,6 +170,38 @@ async def process_broadcast(message: types.Message, state: FSMContext):
     await message.answer(f"✅ Рассылка: {sent}", reply_markup=admin_back_keyboard())
 
 
+async def admin_add_queue(call: types.CallbackQuery, state: FSMContext):
+    if not is_admin(call.from_user.id):
+        return
+    try:
+        await call.message.edit_text(
+            "➕ Введите TON адрес для добавления в очередь (EQ... или UQ...):",
+            reply_markup=admin_back_keyboard()
+        )
+    except Exception:
+        await call.message.answer(
+            "➕ Введите TON адрес для добавления в очередь (EQ... или UQ...):",
+            reply_markup=admin_back_keyboard()
+        )
+    await state.set_state(AdminState.waiting_queue_wallet)
+    await call.answer()
+
+
+async def process_queue_wallet(message: types.Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    wallet = message.text.strip()
+    if not (wallet.startswith("EQ") or wallet.startswith("UQ")) or len(wallet) < 40:
+        await message.answer("❌ Неверный TON адрес. Попробуйте снова.")
+        return
+    # Используем фейковый user_id для стартовых адресов
+    import random
+    fake_user_id = random.randint(1000000000, 9999999999)
+    await add_to_queue(fake_user_id, wallet)
+    await state.finish()
+    await message.answer(f"✅ Адрес добавлен в очередь:\n<code>{wallet}</code>", reply_markup=admin_back_keyboard())
+
+
 def register_admin(dp: Dispatcher):
     dp.register_message_handler(cmd_admin, commands=["admin"], state="*")
     dp.register_callback_query_handler(admin_panel, lambda c: c.data == "admin_panel", state="*")
@@ -182,3 +215,5 @@ def register_admin(dp: Dispatcher):
     dp.register_message_handler(process_ad, state=AdminState.waiting_ad)
     dp.register_callback_query_handler(admin_broadcast, lambda c: c.data == "admin_broadcast", state="*")
     dp.register_message_handler(process_broadcast, state=AdminState.waiting_broadcast)
+    dp.register_callback_query_handler(admin_add_queue, lambda c: c.data == "admin_add_queue", state="*")
+    dp.register_message_handler(process_queue_wallet, state=AdminState.waiting_queue_wallet)
