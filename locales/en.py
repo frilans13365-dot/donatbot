@@ -1,7 +1,8 @@
 TEXTS = {
     "choose_language": "Choose language",
-    "welcome": "Welcome to DonatBot",
+    "welcome": "Welcome to DonatBot! 🎉\n\nHere you can receive donations from other participants.\n\n💡 Tell your friends about this bot — the more participants, the faster you receive donations! 🚀{ad}",
     "rules_btn": "Rules",
+    "my_position_btn": "📊 My position",
     "agree_btn": "I agree",
     "back_btn": "Back",
     "main_menu_btn": "Main menu",
@@ -46,6 +47,8 @@ TEXTS = {
     "payment_failed": "❌ Confirmed {confirmed} of {required} donations. Check transactions and try again.",
     "already_in_queue": "✅ You are already participating in the system!",
     "queue_position": "📊 Your position: {position} of {total}",
+    "not_in_queue": "❌ You are not participating yet.\nPress Rules to get started.",
+    "your_position": "👤 Your position: <b>{position}</b>",
     "graduated": (
         "🎊 Congratulations!\n\n"
         "You have completed the full system cycle.\n"
