@@ -209,29 +209,74 @@ async def add_to_queue(user_id: int, wallet: str):
     pool = await get_pool()
     encrypted = encrypt(wallet)
     removed_user_id = None
+    removed_wallet = None
+
+    # Получаем admin_wallet чтобы определить кто выбывает
+    admin_wallet = await get_setting('admin_wallet')
+
     async with pool.acquire() as conn:
         async with conn.transaction():
             rows = await conn.fetch("SELECT * FROM queue ORDER BY position ASC")
             current_count = len(rows)
 
             if current_count < 4:
+                # Очередь не заполнена — ставим на следующую позицию
                 next_pos = current_count + 2
                 await conn.execute(
                     "INSERT INTO queue (user_id, wallet_encrypted, position) VALUES ($1, $2, $3)",
                     user_id, encrypted, next_pos
                 )
             else:
-                removed = next((r for r in rows if r['position'] == 2), None)
-                if removed:
-                    removed_user_id = removed['user_id']
-                await conn.execute("DELETE FROM queue WHERE position=2")
-                await conn.execute(
-                    "UPDATE queue SET position=position-1 WHERE position IN (3,4,5)"
-                )
-                await conn.execute(
-                    "INSERT INTO queue (user_id, wallet_encrypted, position) VALUES ($1, $2, 5)",
-                    user_id, encrypted
-                )
+                # Очередь полная — смотрим кто на позиции 1
+                top = next((r for r in rows if r['position'] == 1), None)
+
+                if top:
+                    top_wallet = decrypt(top['wallet_encrypted'])
+                    top_user_id = top['user_id']
+
+                    if admin_wallet and top_wallet == admin_wallet:
+                        # На позиции 1 админ — удаляем его и добавляем снова на позицию 5
+                        await conn.execute("DELETE FROM queue WHERE position=1")
+                        await conn.execute(
+                            "UPDATE queue SET position=position-1 WHERE position IN (2,3,4,5)"
+                        )
+                        # Добавляем нового участника на позицию 4
+                        await conn.execute(
+                            "INSERT INTO queue (user_id, wallet_encrypted, position) VALUES ($1, $2, 4)",
+                            user_id, encrypted
+                        )
+                        # Возвращаем админа на позицию 5
+                        admin_encrypted = encrypt(admin_wallet)
+                        await conn.execute(
+                            "INSERT INTO queue (user_id, wallet_encrypted, position) VALUES ($1, $2, 5)",
+                            -1, admin_encrypted
+                        )
+                    else:
+                        # На позиции 1 обычный участник — он выбывает
+                        removed_user_id = top_user_id
+                        removed_wallet = top_wallet
+                        await conn.execute("DELETE FROM queue WHERE position=1")
+                        await conn.execute(
+                            "UPDATE queue SET position=position-1 WHERE position IN (2,3,4,5)"
+                        )
+                        await conn.execute(
+                            "INSERT INTO queue (user_id, wallet_encrypted, position) VALUES ($1, $2, 5)",
+                            user_id, encrypted
+                        )
+                else:
+                    # Нет позиции 1 — стандартное добавление
+                    removed = next((r for r in rows if r['position'] == 2), None)
+                    if removed:
+                        removed_user_id = removed['user_id']
+                    await conn.execute("DELETE FROM queue WHERE position=2")
+                    await conn.execute(
+                        "UPDATE queue SET position=position-1 WHERE position IN (3,4,5)"
+                    )
+                    await conn.execute(
+                        "INSERT INTO queue (user_id, wallet_encrypted, position) VALUES ($1, $2, 5)",
+                        user_id, encrypted
+                    )
+
     return removed_user_id
 
 
