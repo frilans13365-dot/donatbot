@@ -1,12 +1,13 @@
 from aiogram import Dispatcher, types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
+import random
 
 from config import config
 from database import (
     count_users, count_users_today, get_donation_amount,
     get_queue, queue_count, set_setting, all_user_ids,
-    get_admin_wallet, add_to_queue
+    get_admin_wallet, add_to_queue, clear_queue
 )
 from keyboards.keyboards import admin_keyboard, admin_back_keyboard
 
@@ -73,7 +74,7 @@ async def admin_queue(call: types.CallbackQuery):
         lines.append(f"1. 👑 Admin: <code>{admin_wallet[:16]}...</code>")
     for item in queue:
         wallet = item['wallet']
-        lines.append(f"{item['position'] + 1}. <code>{wallet[:16]}...</code>")
+        lines.append(f"{item['position']}. <code>{wallet[:16]}...</code>")
     text = "📋 <b>Очередь:</b>\n\n" + "\n".join(lines) if lines else "📋 Очередь пуста"
     try:
         await call.message.edit_text(text, reply_markup=admin_back_keyboard())
@@ -175,12 +176,14 @@ async def admin_add_queue(call: types.CallbackQuery, state: FSMContext):
         return
     try:
         await call.message.edit_text(
-            "➕ Введите TON адрес для добавления в очередь (EQ... или UQ...):",
+            "➕ Введите TON адрес для добавления в очередь (EQ... или UQ...):\n\n"
+            "Или напишите /clear чтобы очистить очередь и начать заново.",
             reply_markup=admin_back_keyboard()
         )
     except Exception:
         await call.message.answer(
-            "➕ Введите TON адрес для добавления в очередь (EQ... или UQ...):",
+            "➕ Введите TON адрес для добавления в очередь (EQ... или UQ...):\n\n"
+            "Или напишите /clear чтобы очистить очередь и начать заново.",
             reply_markup=admin_back_keyboard()
         )
     await state.set_state(AdminState.waiting_queue_wallet)
@@ -190,16 +193,28 @@ async def admin_add_queue(call: types.CallbackQuery, state: FSMContext):
 async def process_queue_wallet(message: types.Message, state: FSMContext):
     if not is_admin(message.from_user.id):
         return
+
+    if message.text.strip() == "/clear":
+        await clear_queue()
+        await state.finish()
+        await message.answer("✅ Очередь очищена.", reply_markup=admin_back_keyboard())
+        return
+
     wallet = message.text.strip()
     if not (wallet.startswith("EQ") or wallet.startswith("UQ")) or len(wallet) < 40:
-        await message.answer("❌ Неверный TON адрес. Попробуйте снова.")
+        await message.answer("❌ Неверный TON адрес. Попробуйте снова или напишите /clear.")
         return
-    # Используем фейковый user_id для стартовых адресов
-    import random
+
     fake_user_id = random.randint(1000000000, 9999999999)
     await add_to_queue(fake_user_id, wallet)
     await state.finish()
-    await message.answer(f"✅ Адрес добавлен в очередь:\n<code>{wallet}</code>", reply_markup=admin_back_keyboard())
+
+    queue = await get_queue()
+    count = len(queue)
+    await message.answer(
+        f"✅ Адрес добавлен в очередь на позицию {count + 1}:\n<code>{wallet}</code>",
+        reply_markup=admin_back_keyboard()
+    )
 
 
 def register_admin(dp: Dispatcher):
