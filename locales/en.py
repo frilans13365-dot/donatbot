@@ -9,15 +9,16 @@ TEXTS = {
     "rules": (
         "DonatBot Rules\n\n"
         "1. You send a donation to 5 addresses of the specified amount.\n"
-        "2. You MUST include the word DONAT in the transaction comment.\n"
-        "3. After sending, press the ✅ button — your payment will be queued for automatic verification.\n"
+        "2. You MUST include the word DONAT in the comment of each transaction.\n"
+        "3. After sending, press the ✅ button — your payment is queued for automatic verification.\n"
         "4. Transactions are checked automatically every 30 seconds.\n"
-        "5. After all 5 donations are confirmed — your address is added to the system automatically.\n"
-        "6. As new participants join, you move up the queue.\n"
-        "7. When you reach position 2 — new participants donate to you.\n"
-        "8. All data is protected with end-to-end encryption (E2E encryption).\n"
-        "9. Minimum donation amount: {amount} USDT\n"
-        "10. Network: TON (USDT Jetton)\n\n"
+        "5. After all 5 donations are confirmed — your address is added to the system at position 5.\n"
+        "6. Every new participant donates to all 5 queue members including you.\n"
+        "7. As new participants join, you move up the queue.\n"
+        "8. When you reach position 1 — you graduate from the system, completing the full cycle.\n"
+        "9. All data is protected with end-to-end encryption (E2E encryption).\n"
+        "10. Minimum donation amount: {amount} TON\n"
+        "11. Network: TON\n\n"
         "⚠️ Violation of rules leads to exclusion from the system without refund.\n\n"
         "By continuing, you agree to the bot rules."
     ),
@@ -25,7 +26,7 @@ TEXTS = {
     "invalid_wallet": "❌ Invalid address format. Enter TON address (starts with EQ or UQ).",
     "donate_instructions": (
         "💸 Send donations to the following addresses:\n\n"
-        "Amount: {amount} USDT (TON network)\n"
+        "Amount: {amount} TON\n"
         "Comment: <b>DONAT</b>\n\n"
         "{addresses}\n\n"
         "⚠️ You MUST include the word <b>DONAT</b> in the comment of each transaction!\n\n"
@@ -41,8 +42,9 @@ TEXTS = {
     ),
     "payment_success": (
         "🎉 All donations confirmed!\n\n"
-        "Your address has been added to the system.\n"
-        "Wait for new participants — you will move up!"
+        "Your address has been added to the system at position 5.\n"
+        "Every new participant will donate to you!\n"
+        "Tell your friends — the more participants, the faster you move up! 🚀"
     ),
     "payment_failed": "❌ Confirmed {confirmed} of {required} donations. Check transactions and try again.",
     "already_in_queue": "✅ You are already participating in the system!",
@@ -51,15 +53,16 @@ TEXTS = {
     "your_position": "👤 Your position: <b>{position}</b>",
     "graduated": (
         "🎊 Congratulations!\n\n"
-        "You have completed the full system cycle.\n"
+        "You have completed the full system cycle!\n"
+        "You received donations from all new participants while in the queue.\n\n"
         "Want to participate again? Send /start"
     ),
     "set_amount_btn": "💰 Change donation amount",
     "set_wallet_btn": "👛 Change admin wallet",
     "set_ad_btn": "📢 Change advertisement",
     "broadcast_btn": "📣 Broadcast",
-    "enter_amount": "💰 Enter new donation amount in USDT:",
-    "amount_set": "✅ Donation amount updated: {amount} USDT",
+    "enter_amount": "💰 Enter new donation amount in TON:",
+    "amount_set": "✅ Donation amount updated: {amount} TON",
     "enter_admin_wallet": "👛 Enter new admin TON wallet address (EQ... or UQ...):",
     "wallet_set": "✅ Wallet address updated.",
     "enter_ad": "📢 Enter advertisement text (or /skip to remove):",
