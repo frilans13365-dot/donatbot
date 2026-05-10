@@ -66,7 +66,6 @@ async def init_db():
                 attempts INTEGER DEFAULT 0
             )
         """)
-        # Миграции
         await conn.execute("""
             ALTER TABLE payments
             ADD COLUMN IF NOT EXISTS target_wallet_encrypted TEXT
@@ -200,6 +199,12 @@ async def get_queue_wallets() -> List[str]:
     return [item['wallet'] for item in queue]
 
 
+async def clear_queue():
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("DELETE FROM queue")
+
+
 async def add_to_queue(user_id: int, wallet: str):
     pool = await get_pool()
     encrypted = encrypt(wallet)
@@ -207,7 +212,15 @@ async def add_to_queue(user_id: int, wallet: str):
     async with pool.acquire() as conn:
         async with conn.transaction():
             rows = await conn.fetch("SELECT * FROM queue ORDER BY position ASC")
-            if len(rows) >= 4:
+            current_count = len(rows)
+
+            if current_count < 4:
+                next_pos = current_count + 2
+                await conn.execute(
+                    "INSERT INTO queue (user_id, wallet_encrypted, position) VALUES ($1, $2, $3)",
+                    user_id, encrypted, next_pos
+                )
+            else:
                 removed = next((r for r in rows if r['position'] == 2), None)
                 if removed:
                     removed_user_id = removed['user_id']
@@ -215,10 +228,10 @@ async def add_to_queue(user_id: int, wallet: str):
                 await conn.execute(
                     "UPDATE queue SET position=position-1 WHERE position IN (3,4,5)"
                 )
-            await conn.execute(
-                "INSERT INTO queue (user_id, wallet_encrypted, position) VALUES ($1, $2, 5)",
-                user_id, encrypted
-            )
+                await conn.execute(
+                    "INSERT INTO queue (user_id, wallet_encrypted, position) VALUES ($1, $2, 5)",
+                    user_id, encrypted
+                )
     return removed_user_id
 
 
