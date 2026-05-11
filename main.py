@@ -5,8 +5,8 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.middlewares import BaseMiddleware
+from aiogram.dispatcher.handler import CancelHandler
 from aiogram.dispatcher.webhook import get_new_configured_app
-from aiogram.utils.exceptions import CancelHandler
 
 from config import config
 from database import init_db
