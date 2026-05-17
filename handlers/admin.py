@@ -1,15 +1,16 @@
 from aiogram import Dispatcher, types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
-import random
 
 from config import config
 from database import (
     count_users, count_users_today, get_donation_amount,
     get_queue, queue_count, set_setting, all_user_ids,
-    get_admin_wallet, add_to_queue, clear_queue
+    get_admin_wallet
 )
-from keyboards.keyboards import admin_keyboard, admin_back_keyboard
+from keyboards.keyboards import (
+    admin_keyboard, admin_back_keyboard, admin_donate_confirm_keyboard
+)
 
 
 def is_admin(user_id: int) -> bool:
@@ -21,25 +22,19 @@ class AdminState(StatesGroup):
     waiting_wallet = State()
     waiting_ad = State()
     waiting_broadcast = State()
-    waiting_queue_wallet = State()
 
 
-async def cmd_admin(message: types.Message, state: FSMContext):
+async def cmd_admin(message: types.Message):
     if not is_admin(message.from_user.id):
         return
-    await state.finish()
     await message.answer("🔧 <b>Admin Panel</b>", reply_markup=admin_keyboard())
 
 
-async def admin_panel(call: types.CallbackQuery, state: FSMContext):
+async def admin_panel(call: types.CallbackQuery):
     if not is_admin(call.from_user.id):
         await call.answer("⛔ Access denied", show_alert=True)
         return
-    await state.finish()
-    try:
-        await call.message.edit_text("🔧 <b>Admin Panel</b>", reply_markup=admin_keyboard())
-    except Exception:
-        await call.message.answer("🔧 <b>Admin Panel</b>", reply_markup=admin_keyboard())
+    await call.message.edit_text("🔧 <b>Admin Panel</b>", reply_markup=admin_keyboard())
     await call.answer()
 
 
@@ -57,10 +52,7 @@ async def admin_stats(call: types.CallbackQuery):
         f"💰 Сумма / Amount: <b>{amount} USDT</b>\n"
         f"📋 В очереди / Queue: <b>{in_queue}</b>"
     )
-    try:
-        await call.message.edit_text(text, reply_markup=admin_back_keyboard())
-    except Exception:
-        await call.message.answer(text, reply_markup=admin_back_keyboard())
+    await call.message.edit_text(text, reply_markup=admin_back_keyboard())
     await call.answer()
 
 
@@ -68,28 +60,22 @@ async def admin_queue(call: types.CallbackQuery):
     if not is_admin(call.from_user.id):
         return
     queue = await get_queue()
-    admin_wallet = await get_admin_wallet()
     lines = []
-    if admin_wallet:
-        lines.append(f"1. 👑 Admin: <code>{admin_wallet[:16]}...</code>")
     for item in queue:
         wallet = item['wallet']
         lines.append(f"{item['position']}. <code>{wallet[:16]}...</code>")
-    text = "📋 <b>Очередь:</b>\n\n" + "\n".join(lines) if lines else "📋 Очередь пуста"
-    try:
-        await call.message.edit_text(text, reply_markup=admin_back_keyboard())
-    except Exception:
-        await call.message.answer(text, reply_markup=admin_back_keyboard())
+    text = "📋 <b>Очередь / Queue:</b>\n\n" + "\n".join(lines) if lines else "📋 Очередь пуста / Queue is empty"
+    await call.message.edit_text(text, reply_markup=admin_back_keyboard())
     await call.answer()
 
 
 async def admin_set_amount(call: types.CallbackQuery, state: FSMContext):
     if not is_admin(call.from_user.id):
         return
-    try:
-        await call.message.edit_text("💰 Введите новую сумму доната в USDT:", reply_markup=admin_back_keyboard())
-    except Exception:
-        await call.message.answer("💰 Введите новую сумму доната в USDT:", reply_markup=admin_back_keyboard())
+    await call.message.edit_text(
+        "💰 Введите новую сумму доната в USDT:",
+        reply_markup=admin_back_keyboard()
+    )
     await state.set_state(AdminState.waiting_amount)
     await call.answer()
 
@@ -101,7 +87,10 @@ async def process_amount(message: types.Message, state: FSMContext):
         amount = float(message.text.strip())
         await set_setting('donation_amount', str(amount))
         await state.finish()
-        await message.answer(f"✅ Сумма: <b>{amount} USDT</b>", reply_markup=admin_back_keyboard())
+        await message.answer(
+            f"✅ Сумма: <b>{amount} USDT</b>",
+            reply_markup=admin_back_keyboard()
+        )
     except ValueError:
         await message.answer("❌ Введите число!")
 
@@ -109,10 +98,10 @@ async def process_amount(message: types.Message, state: FSMContext):
 async def admin_set_wallet(call: types.CallbackQuery, state: FSMContext):
     if not is_admin(call.from_user.id):
         return
-    try:
-        await call.message.edit_text("👛 Введите TON адрес кошелька (EQ... или UQ...):", reply_markup=admin_back_keyboard())
-    except Exception:
-        await call.message.answer("👛 Введите TON адрес кошелька (EQ... или UQ...):", reply_markup=admin_back_keyboard())
+    await call.message.edit_text(
+        "👛 Введите адрес кошелька:",
+        reply_markup=admin_back_keyboard()
+    )
     await state.set_state(AdminState.waiting_wallet)
     await call.answer()
 
@@ -128,10 +117,10 @@ async def process_wallet(message: types.Message, state: FSMContext):
 async def admin_set_ad(call: types.CallbackQuery, state: FSMContext):
     if not is_admin(call.from_user.id):
         return
-    try:
-        await call.message.edit_text("📢 Введите текст рекламы (или /skip чтобы убрать):", reply_markup=admin_back_keyboard())
-    except Exception:
-        await call.message.answer("📢 Введите текст рекламы (или /skip чтобы убрать):", reply_markup=admin_back_keyboard())
+    await call.message.edit_text(
+        "📢 Введите текст рекламы (или /skip чтобы убрать):",
+        reply_markup=admin_back_keyboard()
+    )
     await state.set_state(AdminState.waiting_ad)
     await call.answer()
 
@@ -148,10 +137,10 @@ async def process_ad(message: types.Message, state: FSMContext):
 async def admin_broadcast(call: types.CallbackQuery, state: FSMContext):
     if not is_admin(call.from_user.id):
         return
-    try:
-        await call.message.edit_text("📣 Введите текст рассылки:", reply_markup=admin_back_keyboard())
-    except Exception:
-        await call.message.answer("📣 Введите текст рассылки:", reply_markup=admin_back_keyboard())
+    await call.message.edit_text(
+        "📣 Введите текст рассылки:",
+        reply_markup=admin_back_keyboard()
+    )
     await state.set_state(AdminState.waiting_broadcast)
     await call.answer()
 
@@ -168,53 +157,48 @@ async def process_broadcast(message: types.Message, state: FSMContext):
             sent += 1
         except Exception:
             pass
-    await message.answer(f"✅ Рассылка: {sent}", reply_markup=admin_back_keyboard())
+    await message.answer(
+        f"✅ Рассылка: {sent}",
+        reply_markup=admin_back_keyboard()
+    )
 
 
-async def admin_add_queue(call: types.CallbackQuery, state: FSMContext):
+async def admin_donate_now(call: types.CallbackQuery):
     if not is_admin(call.from_user.id):
         return
-    try:
+    queue = await get_queue()
+    if not queue:
         await call.message.edit_text(
-            "➕ Введите TON адрес для добавления в очередь (EQ... или UQ...):\n\n"
-            "Или напишите /clear чтобы очистить очередь и начать заново.",
+            "❌ Очередь пуста.",
             reply_markup=admin_back_keyboard()
         )
-    except Exception:
-        await call.message.answer(
-            "➕ Введите TON адрес для добавления в очередь (EQ... или UQ...):\n\n"
-            "Или напишите /clear чтобы очистить очередь и начать заново.",
-            reply_markup=admin_back_keyboard()
-        )
-    await state.set_state(AdminState.waiting_queue_wallet)
+        await call.answer()
+        return
+
+    amount = await get_donation_amount()
+    addr_text = ""
+    for item in queue:
+        addr_text += f"{item['position']}. <code>{item['wallet']}</code>\n"
+
+    await call.message.edit_text(
+        f"💸 <b>Донат вне очереди</b>\n\n"
+        f"Сумма: <b>{amount} USDT</b>\n"
+        f"Комментарий: <b>DONAT</b>\n\n"
+        f"Адреса:\n{addr_text}\n\n"
+        f"После отправки нажмите Подтвердить.",
+        reply_markup=admin_donate_confirm_keyboard()
+    )
     await call.answer()
 
 
-async def process_queue_wallet(message: types.Message, state: FSMContext):
-    if not is_admin(message.from_user.id):
+async def admin_donate_confirm(call: types.CallbackQuery):
+    if not is_admin(call.from_user.id):
         return
-
-    if message.text.strip() == "/clear":
-        await clear_queue()
-        await state.finish()
-        await message.answer("✅ Очередь очищена.", reply_markup=admin_back_keyboard())
-        return
-
-    wallet = message.text.strip()
-    if not (wallet.startswith("EQ") or wallet.startswith("UQ")) or len(wallet) < 40:
-        await message.answer("❌ Неверный TON адрес. Попробуйте снова или напишите /clear.")
-        return
-
-    fake_user_id = random.randint(1000000000, 9999999999)
-    await add_to_queue(fake_user_id, wallet)
-    await state.finish()
-
-    queue = await get_queue()
-    count = len(queue)
-    await message.answer(
-        f"✅ Адрес добавлен в очередь на позицию {count + 1}:\n<code>{wallet}</code>",
+    await call.message.edit_text(
+        "✅ Донат засчитан! Спасибо за участие.",
         reply_markup=admin_back_keyboard()
     )
+    await call.answer()
 
 
 def register_admin(dp: Dispatcher):
@@ -230,5 +214,5 @@ def register_admin(dp: Dispatcher):
     dp.register_message_handler(process_ad, state=AdminState.waiting_ad)
     dp.register_callback_query_handler(admin_broadcast, lambda c: c.data == "admin_broadcast", state="*")
     dp.register_message_handler(process_broadcast, state=AdminState.waiting_broadcast)
-    dp.register_callback_query_handler(admin_add_queue, lambda c: c.data == "admin_add_queue", state="*")
-    dp.register_message_handler(process_queue_wallet, state=AdminState.waiting_queue_wallet)
+    dp.register_callback_query_handler(admin_donate_now, lambda c: c.data == "admin_donate_now", state="*")
+    dp.register_callback_query_handler(admin_donate_confirm, lambda c: c.data == "admin_donate_confirm", state="*")
