@@ -42,7 +42,7 @@ async def init_db():
             CREATE TABLE IF NOT EXISTS payments (
                 id SERIAL PRIMARY KEY,
                 user_id BIGINT NOT NULL,
-                target_wallet_encrypted TEXT,
+                target_wallet_encrypted TEXT NOT NULL,
                 invoice_id TEXT UNIQUE,
                 amount FLOAT NOT NULL,
                 status TEXT DEFAULT 'pending',
@@ -54,45 +54,6 @@ async def init_db():
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL
             )
-        """)
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS pending_checks (
-                id SERIAL PRIMARY KEY,
-                user_id BIGINT NOT NULL UNIQUE,
-                wallet_encrypted TEXT NOT NULL,
-                target_wallets_encrypted TEXT NOT NULL,
-                amount FLOAT NOT NULL,
-                created_at TIMESTAMP DEFAULT NOW(),
-                attempts INTEGER DEFAULT 0
-            )
-        """)
-        await conn.execute("""
-            ALTER TABLE payments
-            ADD COLUMN IF NOT EXISTS target_wallet_encrypted TEXT
-        """)
-        await conn.execute("""
-            ALTER TABLE users
-            ADD COLUMN IF NOT EXISTS language TEXT DEFAULT 'ru'
-        """)
-        await conn.execute("""
-            ALTER TABLE users
-            ADD COLUMN IF NOT EXISTS wallet TEXT
-        """)
-        await conn.execute("""
-            ALTER TABLE users
-            ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'new'
-        """)
-        await conn.execute("""
-            DO $$
-            BEGIN
-                IF EXISTS (
-                    SELECT 1 FROM information_schema.columns
-                    WHERE table_name='payments' AND column_name='amount'
-                    AND data_type='text'
-                ) THEN
-                    ALTER TABLE payments ALTER COLUMN amount TYPE FLOAT USING amount::float;
-                END IF;
-            END$$
         """)
         await conn.execute("""
             INSERT INTO settings (key, value) VALUES
@@ -199,84 +160,29 @@ async def get_queue_wallets() -> List[str]:
     return [item['wallet'] for item in queue]
 
 
-async def clear_queue():
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        await conn.execute("DELETE FROM queue")
-
-
 async def add_to_queue(user_id: int, wallet: str):
     pool = await get_pool()
     encrypted = encrypt(wallet)
     removed_user_id = None
-    removed_wallet = None
-
-    # Получаем admin_wallet чтобы определить кто выбывает
-    admin_wallet = await get_setting('admin_wallet')
-
     async with pool.acquire() as conn:
         async with conn.transaction():
             rows = await conn.fetch("SELECT * FROM queue ORDER BY position ASC")
-            current_count = len(rows)
-
-            if current_count < 4:
-                # Очередь не заполнена — ставим на следующую позицию
-                next_pos = current_count + 2
+            if len(rows) >= 5:
+                removed = next((r for r in rows if r['position'] == 5), None)
+                if removed:
+                    removed_user_id = removed['user_id']
+                await conn.execute("DELETE FROM queue WHERE position=5")
                 await conn.execute(
-                    "INSERT INTO queue (user_id, wallet_encrypted, position) VALUES ($1, $2, $3)",
-                    user_id, encrypted, next_pos
+                    "UPDATE queue SET position=position+1 WHERE position IN (1,2,3,4)"
                 )
             else:
-                # Очередь полная — смотрим кто на позиции 1
-                top = next((r for r in rows if r['position'] == 1), None)
-
-                if top:
-                    top_wallet = decrypt(top['wallet_encrypted'])
-                    top_user_id = top['user_id']
-
-                    if admin_wallet and top_wallet == admin_wallet:
-                        # На позиции 1 админ — удаляем его и добавляем снова на позицию 5
-                        await conn.execute("DELETE FROM queue WHERE position=1")
-                        await conn.execute(
-                            "UPDATE queue SET position=position-1 WHERE position IN (2,3,4,5)"
-                        )
-                        # Добавляем нового участника на позицию 4
-                        await conn.execute(
-                            "INSERT INTO queue (user_id, wallet_encrypted, position) VALUES ($1, $2, 4)",
-                            user_id, encrypted
-                        )
-                        # Возвращаем админа на позицию 5
-                        admin_encrypted = encrypt(admin_wallet)
-                        await conn.execute(
-                            "INSERT INTO queue (user_id, wallet_encrypted, position) VALUES ($1, $2, 5)",
-                            -1, admin_encrypted
-                        )
-                    else:
-                        # На позиции 1 обычный участник — он выбывает
-                        removed_user_id = top_user_id
-                        removed_wallet = top_wallet
-                        await conn.execute("DELETE FROM queue WHERE position=1")
-                        await conn.execute(
-                            "UPDATE queue SET position=position-1 WHERE position IN (2,3,4,5)"
-                        )
-                        await conn.execute(
-                            "INSERT INTO queue (user_id, wallet_encrypted, position) VALUES ($1, $2, 5)",
-                            user_id, encrypted
-                        )
-                else:
-                    # Нет позиции 1 — стандартное добавление
-                    removed = next((r for r in rows if r['position'] == 2), None)
-                    if removed:
-                        removed_user_id = removed['user_id']
-                    await conn.execute("DELETE FROM queue WHERE position=2")
-                    await conn.execute(
-                        "UPDATE queue SET position=position-1 WHERE position IN (3,4,5)"
-                    )
-                    await conn.execute(
-                        "INSERT INTO queue (user_id, wallet_encrypted, position) VALUES ($1, $2, 5)",
-                        user_id, encrypted
-                    )
-
+                await conn.execute(
+                    "UPDATE queue SET position=position+1"
+                )
+            await conn.execute(
+                "INSERT INTO queue (user_id, wallet_encrypted, position) VALUES ($1, $2, 1)",
+                user_id, encrypted
+            )
     return removed_user_id
 
 
@@ -309,7 +215,7 @@ async def create_payment(user_id: int, target_wallet: str, invoice_id: str, amou
         await conn.execute(
             "INSERT INTO payments (user_id, target_wallet_encrypted, invoice_id, amount) "
             "VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING",
-            user_id, encrypted, invoice_id, float(amount)
+            user_id, encrypted, invoice_id, amount
         )
 
 
@@ -358,52 +264,3 @@ async def get_admin_wallet() -> str:
 
 async def get_ad_text() -> str:
     return await get_setting('ad_text')
-
-
-async def add_pending_check(user_id: int, wallet: str, target_wallets: List[str], amount: float):
-    pool = await get_pool()
-    encrypted_wallet = encrypt(wallet)
-    encrypted_targets = encrypt(",".join(target_wallets))
-    async with pool.acquire() as conn:
-        await conn.execute(
-            "INSERT INTO pending_checks (user_id, wallet_encrypted, target_wallets_encrypted, amount) "
-            "VALUES ($1, $2, $3, $4) ON CONFLICT (user_id) DO UPDATE SET "
-            "wallet_encrypted=$2, target_wallets_encrypted=$3, amount=$4, created_at=NOW(), attempts=0",
-            user_id, encrypted_wallet, encrypted_targets, float(amount)
-        )
-
-
-async def get_pending_checks() -> List[dict]:
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            "SELECT * FROM pending_checks WHERE attempts < 240 "
-            "AND created_at > NOW() - INTERVAL '2 hours'"
-        )
-        result = []
-        for r in rows:
-            result.append({
-                'user_id': r['user_id'],
-                'wallet': decrypt(r['wallet_encrypted']),
-                'target_wallets': decrypt(r['target_wallets_encrypted']).split(","),
-                'amount': r['amount'],
-                'attempts': r['attempts']
-            })
-        return result
-
-
-async def increment_pending_attempts(user_id: int):
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        await conn.execute(
-            "UPDATE pending_checks SET attempts=attempts+1 WHERE user_id=$1",
-            user_id
-        )
-
-
-async def remove_pending_check(user_id: int):
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        await conn.execute(
-            "DELETE FROM pending_checks WHERE user_id=$1", user_id
-        )
