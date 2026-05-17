@@ -1,74 +1,66 @@
 TEXTS = {
-    "choose_language": "Choose language",
-    "welcome": "Welcome to DonatBot! 🎉\n\nHere you can receive donations from other participants.\n\n💡 Tell your friends about this bot — the more participants, the faster you receive donations! 🚀{ad}",
-    "rules_btn": "Rules",
-    "my_position_btn": "📊 My position",
-    "agree_btn": "I agree",
-    "back_btn": "Back",
-    "main_menu_btn": "Main menu",
+    "choose_language": "🌐 Выберите язык / Choose language:",
+    "welcome": (
+        "👋 <b>Welcome to DonatBot!</b>\n\n"
+        "This is a decentralized mutual donation system.\n\n"
+        "{ad}"
+    ),
+    "rules_btn": "📜 Rules",
+    "agree_btn": "✅ I agree",
+    "back_btn": "🔙 Back",
+    "main_menu_btn": "🏠 Main menu",
     "rules": (
-        "DonatBot Rules\n\n"
+        "📜 <b>DonatBot Rules</b>\n\n"
         "1. You send a donation to 5 addresses of the specified amount.\n"
-        "2. You MUST include the word DONAT in the comment of each transaction.\n"
-        "3. After sending, press the ✅ button — your payment is queued for automatic verification.\n"
-        "4. Transactions are checked automatically every 30 seconds.\n"
-        "5. After all 5 donations are confirmed — your address is added to the system at position 5.\n"
-        "6. Every new participant donates to all 5 queue members including you.\n"
-        "7. As new participants join, you move up the queue.\n"
-        "8. When you reach position 1 — you graduate from the system, completing the full cycle.\n"
-        "9. All data is protected with end-to-end encryption (E2E encryption).\n"
-        "10. Minimum donation amount: {amount} TON\n"
-        "11. Network: TON\n\n"
+        "2. You MUST include the word <b>DONAT</b> in the transaction comment.\n"
+        "3. After all 5 donations confirmed — your address is added to <b>position 1</b>.\n"
+        "4. As new participants join, you move down the queue.\n"
+        "5. Every new participant donates to you — this is how you collect donations.\n"
+        "6. For a full cycle each participant receives <b>6 donations</b> — one more than sent!\n"
+        "7. When you reach position 5 and a new participant joins — you exit the system.\n"
+        "8. All data is protected with end-to-end encryption (E2E encryption).\n"
+        "9. Minimum donation amount: <b>{amount} USDT</b>\n\n"
         "⚠️ Violation of rules leads to exclusion from the system without refund.\n\n"
         "By continuing, you agree to the bot rules."
     ),
-    "enter_wallet": "💳 Enter your TON wallet address (starts with EQ or UQ):",
-    "invalid_wallet": "❌ Invalid address format. Enter TON address (starts with EQ or UQ).",
+    "enter_wallet": "💳 Enter your USDT wallet address:",
+    "invalid_wallet": "❌ Invalid address format. Please try again.",
     "donate_instructions": (
-        "💸 Send donations to the following addresses:\n\n"
-        "Amount: {amount} TON\n"
+        "💸 <b>Send donations to the following addresses:</b>\n\n"
+        "Amount: <b>{amount} USDT</b>\n"
         "Comment: <b>DONAT</b>\n\n"
         "{addresses}\n\n"
-        "⚠️ You MUST include the word <b>DONAT</b> in the comment of each transaction!\n\n"
         "After sending all donations press the button ✅"
     ),
     "check_payment_btn": "✅ I sent all donations",
-    "payment_pending": "⏳ Checking your blockchain transactions... Please wait.",
-    "payment_queued": (
-        "⏳ Your payment has been queued for verification.\n\n"
-        "We check transactions every 30 seconds.\n"
-        "Once all donations are confirmed — you will receive a notification automatically.\n\n"
-        "Maximum waiting time: 2 hours."
-    ),
+    "payment_pending": "⏳ Checking your payments... Please wait.",
     "payment_success": (
-        "🎉 All donations confirmed!\n\n"
-        "Your address has been added to the system at position 5.\n"
-        "Every new participant will donate to you!\n"
-        "Tell your friends — the more participants, the faster you move up! 🚀"
+        "🎉 <b>All donations confirmed!</b>\n\n"
+        "Your address has been added to position 1.\n"
+        "New participants will donate to you as the cycle progresses!\n\n"
+        "For a full cycle you will receive <b>6 donations</b> 💰"
     ),
-    "payment_failed": "❌ Confirmed {confirmed} of {required} donations. Check transactions and try again.",
+    "payment_failed": "❌ Not all payments confirmed. Please check and try again.",
     "already_in_queue": "✅ You are already participating in the system!",
-    "queue_position": "📊 Your position: {position} of {total}",
-    "not_in_queue": "❌ You are not participating yet.\nPress Rules to get started.",
-    "your_position": "👤 Your position: <b>{position}</b>",
+    "queue_position": "📊 Your position: <b>{position}</b> of {total}",
     "graduated": (
-        "🎊 Congratulations!\n\n"
-        "You have completed the full system cycle!\n"
-        "You received donations from all new participants while in the queue.\n\n"
+        "🎊 <b>Congratulations!</b>\n\n"
+        "You completed the full cycle and received all donations!\n"
         "Want to participate again? Send /start"
     ),
     "set_amount_btn": "💰 Change donation amount",
-    "set_wallet_btn": "👛 Change admin wallet",
+    "set_wallet_btn": "👛 Change wallet address",
     "set_ad_btn": "📢 Change advertisement",
     "broadcast_btn": "📣 Broadcast",
-    "enter_amount": "💰 Enter new donation amount in TON:",
-    "amount_set": "✅ Donation amount updated: {amount} TON",
-    "enter_admin_wallet": "👛 Enter new admin TON wallet address (EQ... or UQ...):",
+    "donate_now_btn": "💸 Donate out of queue",
+    "enter_amount": "💰 Enter new donation amount in USDT:",
+    "amount_set": "✅ Donation amount updated: <b>{amount} USDT</b>",
+    "enter_admin_wallet": "👛 Enter new wallet address:",
     "wallet_set": "✅ Wallet address updated.",
     "enter_ad": "📢 Enter advertisement text (or /skip to remove):",
     "ad_set": "✅ Advertisement updated.",
     "enter_broadcast": "📣 Enter broadcast message:",
     "broadcast_done": "✅ Broadcast complete. Sent: {sent}",
     "queue_view_btn": "📋 Queue",
-    "queue_list": "📋 Current queue:\n\n{list}",
+    "queue_list": "📋 <b>Current queue:</b>\n\n{list}",
 }
