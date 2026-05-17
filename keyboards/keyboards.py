@@ -19,7 +19,6 @@ def main_menu_keyboard(lang: str) -> InlineKeyboardMarkup:
     t = get_texts(lang)
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=t["rules_btn"], callback_data="show_rules")],
-        [InlineKeyboardButton(text=t["my_position_btn"], callback_data="my_position")],
     ])
 
 
@@ -55,12 +54,19 @@ def admin_keyboard(lang: str = 'ru') -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text=t["set_ad_btn"], callback_data="admin_set_ad")],
         [InlineKeyboardButton(text=t["broadcast_btn"], callback_data="admin_broadcast")],
         [InlineKeyboardButton(text=t["queue_view_btn"], callback_data="admin_queue")],
-        [InlineKeyboardButton(text="➕ Добавить адрес в очередь", callback_data="admin_add_queue")],
+        [InlineKeyboardButton(text=t["donate_now_btn"], callback_data="admin_donate_now")],
         [InlineKeyboardButton(text=t["back_btn"], callback_data="main_menu")],
     ])
 
 
 def admin_back_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔙 Назад / Back", callback_data="admin_panel")],
+    ])
+
+
+def admin_donate_confirm_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Подтвердить / Confirm", callback_data="admin_donate_confirm")],
         [InlineKeyboardButton(text="🔙 Назад / Back", callback_data="admin_panel")],
     ])
