@@ -54,6 +54,7 @@ def admin_keyboard(lang: str = 'ru') -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text=t["set_ad_btn"], callback_data="admin_set_ad")],
         [InlineKeyboardButton(text=t["broadcast_btn"], callback_data="admin_broadcast")],
         [InlineKeyboardButton(text=t["queue_view_btn"], callback_data="admin_queue")],
+        [InlineKeyboardButton(text=t["add_to_queue_btn"], callback_data="admin_add_to_queue")],
         [InlineKeyboardButton(text=t["donate_now_btn"], callback_data="admin_donate_now")],
         [InlineKeyboardButton(text=t["back_btn"], callback_data="main_menu")],
     ])
