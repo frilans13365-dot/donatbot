@@ -1,3 +1,4 @@
+import time
 from aiogram import Dispatcher, types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
@@ -6,7 +7,7 @@ from config import config
 from database import (
     count_users, count_users_today, get_donation_amount,
     get_queue, queue_count, set_setting, all_user_ids,
-    get_admin_wallet
+    get_admin_wallet, add_to_queue
 )
 from keyboards.keyboards import (
     admin_keyboard, admin_back_keyboard, admin_donate_confirm_keyboard
@@ -22,6 +23,7 @@ class AdminState(StatesGroup):
     waiting_wallet = State()
     waiting_ad = State()
     waiting_broadcast = State()
+    waiting_add_wallet = State()
 
 
 async def cmd_admin(message: types.Message):
@@ -67,6 +69,38 @@ async def admin_queue(call: types.CallbackQuery):
     text = "📋 <b>Очередь / Queue:</b>\n\n" + "\n".join(lines) if lines else "📋 Очередь пуста / Queue is empty"
     await call.message.edit_text(text, reply_markup=admin_back_keyboard())
     await call.answer()
+
+
+async def admin_add_to_queue(call: types.CallbackQuery, state: FSMContext):
+    if not is_admin(call.from_user.id):
+        return
+    in_queue = await queue_count()
+    await call.message.edit_text(
+        f"➕ В очереди сейчас: <b>{in_queue}/5</b>\n\n"
+        f"Введите USDT-адрес для добавления в очередь:",
+        reply_markup=admin_back_keyboard()
+    )
+    await state.set_state(AdminState.waiting_add_wallet)
+    await call.answer()
+
+
+async def process_add_to_queue(message: types.Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    wallet = message.text.strip()
+    if len(wallet) < 10:
+        await message.answer("❌ Неверный адрес. Попробуйте снова.")
+        return
+    await state.finish()
+    fake_user_id = -int(time.time() % 100000)
+    await add_to_queue(fake_user_id, wallet)
+    in_queue = await queue_count()
+    await message.answer(
+        f"✅ Адрес добавлен в очередь!\n"
+        f"<code>{wallet}</code>\n\n"
+        f"В очереди: <b>{in_queue}/5</b>",
+        reply_markup=admin_back_keyboard()
+    )
 
 
 async def admin_set_amount(call: types.CallbackQuery, state: FSMContext):
@@ -206,6 +240,8 @@ def register_admin(dp: Dispatcher):
     dp.register_callback_query_handler(admin_panel, lambda c: c.data == "admin_panel", state="*")
     dp.register_callback_query_handler(admin_stats, lambda c: c.data == "admin_stats", state="*")
     dp.register_callback_query_handler(admin_queue, lambda c: c.data == "admin_queue", state="*")
+    dp.register_callback_query_handler(admin_add_to_queue, lambda c: c.data == "admin_add_to_queue", state="*")
+    dp.register_message_handler(process_add_to_queue, state=AdminState.waiting_add_wallet)
     dp.register_callback_query_handler(admin_set_amount, lambda c: c.data == "admin_set_amount", state="*")
     dp.register_message_handler(process_amount, state=AdminState.waiting_amount)
     dp.register_callback_query_handler(admin_set_wallet, lambda c: c.data == "admin_set_wallet", state="*")
