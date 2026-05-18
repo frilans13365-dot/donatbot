@@ -22,6 +22,10 @@ register_donation(dp)
 register_admin(dp)
 
 
+async def health_check(request):
+    return web.Response(text="OK")
+
+
 async def on_startup(app):
     await bot.set_webhook(f"{config.BASE_URL}/webhook")
     await init_db()
@@ -35,6 +39,7 @@ async def on_shutdown(app):
 def main():
     app = get_new_configured_app(dispatcher=dp, path="/webhook")
     app.router.add_post("/payment-webhook", payment_webhook)
+    app.router.add_get("/", health_check)
     app.on_startup.append(on_startup)
     app.on_shutdown.append(on_shutdown)
     web.run_app(app, host="0.0.0.0", port=config.WEBHOOK_PORT)
