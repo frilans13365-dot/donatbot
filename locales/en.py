@@ -53,6 +53,7 @@ TEXTS = {
     "set_ad_btn": "📢 Change advertisement",
     "broadcast_btn": "📣 Broadcast",
     "donate_now_btn": "💸 Donate out of queue",
+    "add_to_queue_btn": "➕ Add address to queue",
     "enter_amount": "💰 Enter new donation amount in USDT:",
     "amount_set": "✅ Donation amount updated: <b>{amount} USDT</b>",
     "enter_admin_wallet": "👛 Enter new wallet address:",
