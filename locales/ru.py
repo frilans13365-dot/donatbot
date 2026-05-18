@@ -53,6 +53,7 @@ TEXTS = {
     "set_ad_btn": "📢 Изменить рекламу",
     "broadcast_btn": "📣 Рассылка",
     "donate_now_btn": "💸 Задонатить вне очереди",
+    "add_to_queue_btn": "➕ Добавить адрес в очередь",
     "enter_amount": "💰 Введите новую сумму доната в USDT:",
     "amount_set": "✅ Сумма доната изменена: <b>{amount} USDT</b>",
     "enter_admin_wallet": "👛 Введите новый адрес кошелька:",
