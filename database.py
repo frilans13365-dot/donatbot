@@ -161,24 +161,32 @@ async def get_queue_wallets() -> List[str]:
 
 
 async def add_to_queue(user_id: int, wallet: str):
+    """
+    Добавляет адрес на позицию 1, сдвигает остальных вниз.
+    Если в очереди уже 5 — удаляет позицию 5 перед сдвигом.
+    Максимум в очереди: 5 адресов.
+    """
     pool = await get_pool()
     encrypted = encrypt(wallet)
     removed_user_id = None
     async with pool.acquire() as conn:
         async with conn.transaction():
-            rows = await conn.fetch("SELECT * FROM queue ORDER BY position ASC")
-            if len(rows) >= 5:
-                removed = next((r for r in rows if r['position'] == 5), None)
+            count = await conn.fetchval("SELECT COUNT(*) FROM queue")
+            if count >= 5:
+                # Удаляем того кто на позиции 5
+                removed = await conn.fetchrow(
+                    "SELECT user_id FROM queue WHERE position = 5"
+                )
                 if removed:
                     removed_user_id = removed['user_id']
-                await conn.execute("DELETE FROM queue WHERE position=5")
-                await conn.execute(
-                    "UPDATE queue SET position=position+1 WHERE position IN (1,2,3,4)"
-                )
-            else:
-                await conn.execute(
-                    "UPDATE queue SET position=position+1"
-                )
+                await conn.execute("DELETE FROM queue WHERE position = 5")
+
+            # Сдвигаем всех оставшихся на 1 вниз
+            await conn.execute(
+                "UPDATE queue SET position = position + 1"
+            )
+
+            # Вставляем новый адрес на позицию 1
             await conn.execute(
                 "INSERT INTO queue (user_id, wallet_encrypted, position) VALUES ($1, $2, 1)",
                 user_id, encrypted
@@ -234,6 +242,24 @@ async def get_paid_count(user_id: int) -> int:
             "SELECT COUNT(*) FROM payments WHERE user_id=$1 AND status='paid'",
             user_id
         )
+
+
+async def get_pending_payments(user_id: int) -> List[dict]:
+    """Возвращает все ожидающие платежи пользователя."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT * FROM payments WHERE user_id=$1 AND status='pending'",
+            user_id
+        )
+        result = []
+        for r in rows:
+            result.append({
+                'invoice_id': r['invoice_id'],
+                'target_wallet': decrypt(r['target_wallet_encrypted']),
+                'amount': r['amount'],
+            })
+        return result
 
 
 async def get_setting(key: str) -> str:
